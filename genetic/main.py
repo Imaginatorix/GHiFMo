@@ -83,16 +83,24 @@ def mutate(molecule):
 
     return molecule_mutate.head_atom
 
+def get_binding_affinity():
+    pass
+
+def get_admet():
+    pass
+
+def get_synthetic_accessibility():
+    pass
+
 # Genetic Algorithm for molecular structures
 def genetic_algorithm():
 
     # Initialize population
     population = init_population()
+    # Get Fitness
 
     for generation in range(generations):
-        # Pareto Ranking and Filtration
-
-        # Parent Selection
+        # Parent Selection [Tournament Selection]
 
         # Mutate
 
@@ -101,6 +109,16 @@ def genetic_algorithm():
         # Scaffold Hop
 
         # New population
+
+        # Get Fitness
+
+        # Pareto Ranking, Filtration, and Clustering [Pareto Archive]
+
+        # Set new population to population
+
+
+
+
 
         # for molecule in population:
         #     print(molecule.show())
