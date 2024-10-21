@@ -9,6 +9,11 @@ mut_rate = 0.01  # probability of mutation happening (1% in this case)
 cross_rate = 0.07  # probability of doing crossover instead of returning parents
 generations = 200  # number of processes
 
+model_filepath = 'trained_model.pkl'
+gp = joblib.load(model_filepath)
+
+morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
 def random_molecule():
     C_string_ring = Ring_Manager()
@@ -20,6 +25,16 @@ def random_molecule():
         ]))
     ])
     return C_string
+
+def molecule_to_smiles(molecule):
+    return molecule.to_smiles()  # Assuming each molecule has a `to_smiles()` method
+    
+def smiles_to_fingerprint(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is not None:
+        fp = morgan_gen.GetFingerprint(mol)
+        return np.array(fp)
+    return None
 
 # Initialize a population of random molecular structures
 def init_population():
@@ -84,7 +99,15 @@ def mutate(molecule):
     return molecule_mutate.head_atom
 
 def get_binding_affinity():
-    pass
+    smiles = molecule_to_smiles(molecule)
+    fingerprint = smiles_to_fingerprint(smiles)
+
+    if fingerprint is None:
+        print(f"Invalid molecule: {smiles}")
+        return float('-inf')  # Assign a very low score value if invalid
+
+    predicted_affinity = gp.predict([fingerprint])[0]
+    return predicted_affinity
 
 def get_admet():
     pass
