@@ -2,6 +2,7 @@ import random
 import copy
 from Chromosome import *
 from GeneticMutation import *
+import pandas as pd
 
 pop_size = 5
 gen_length = 20  # placeholder for molecular complexity
@@ -109,11 +110,41 @@ def get_binding_affinity():
     predicted_affinity = gp.predict([fingerprint])[0]
     return predicted_affinity
 
-def get_admet():
-    pass
+# Get Admet and Get SA are merged.  Stored values in DataFrame in extracted_data variable
 
-def get_synthetic_accessibility():
-    pass
+# Change file path as to where the stored ADMET and SA values are
+def get_admet(file_path='C:\A. Personal Files\ReSearch\A. Admet\selenium\merged_excel.xlsx'):
+    try:
+        df = pd.read_excel(file_path)
+    except FileNotFoundError:
+        return "File not found. Please check the file path and name."
+    
+    # Define the columns to extract#No CaCo2 and HIA
+    columns_to_extract = ['smiles' , 'Lipinski','PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
+     
+    # Check if all columns exist in the dataset
+    missing_columns = [col for col in columns_to_extract if col not in df.columns]
+    if missing_columns:
+        return f"The following columns are missing in the dataset: {missing_columns}"
+    
+        # Extract the relevant columns
+        extracted_data = df[columns_to_extract]
+        # No output yet. Not stored in .csv nor .xlsx file. 
+   
+        return extracted_data
+
+    # get_sa() # Uncomment this line to run it in a local environment
+    
+    extracted_data = get_admet()
+
+    #Optional
+    print(extracted_data)
+
+    # When conversion is needed, just uncomment:
+    # extracted_columns = get_admet()
+    # extracted_columns.to_excel('extracted_data.xlsx', index=False)
+
 
 # Genetic Algorithm for molecular structures
 def genetic_algorithm():
