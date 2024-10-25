@@ -110,7 +110,7 @@ def get_binding_affinity():
     predicted_affinity = gp.predict([fingerprint])[0]
     return predicted_affinity
 
-# Get Admet and Get SA are merged.  Stored values in DataFrame in extracted_data variable
+# Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
 
 # Change file path as to where the stored ADMET and SA values are
 def get_admet(file_path='C:\A. Personal Files\ReSearch\A. Admet\selenium\merged_excel.xlsx'):
@@ -164,7 +164,60 @@ def genetic_algorithm():
 
         # New population
 
-        # Get Fitness
+        def fitness(molecule):
+            # Extract ADMET-related properties from the molecule
+            lipinski = molecule.get('Lipinski', 0.5)     # Lipinski's rule of five
+            ppb = molecule.get('PPB', 0.5)               # Plasma Protein Binding
+            log_vdss = molecule.get('logVDss', 0.5)      # Volume of Distribution
+            cyp3a4_inh = molecule.get('CYP3A4-inh', 0.5) # CYP3A4 inhibition
+            cyp3a4_sub = molecule.get('CYP3A4-sub', 0.5) # CYP3A4 substrate
+            cyp2d6_inh = molecule.get('CYP2D6-inh', 0.5) # CYP2D6 inhibition
+            cyp2d6_sub = molecule.get('CYP2D6-sub', 0.5) # CYP2D6 substrate
+            cl_plasma = molecule.get('cl-plasma', 0.5)   # Plasma clearance
+            t_half = molecule.get('t0.5', 0.5)           # Half-life
+            dili = molecule.get('DILI', 0.5)             # Drug-Induced Liver Injury
+            herg = molecule.get('hERG', 0.5)             # hERG inhibition (cardiotoxicity risk)
+            synth = molecule.get('Synth', 0.5)           # Synthetic accessibility
+            
+            # Predicted binding affinity (e.g., lower values are better for binding affinity)
+            binding_affinity = get_binding_affinity(molecule)
+            
+            # Set weights for each property (adjusted based on importance)
+            weights = {
+                'Lipinski': 0.1,
+                'PPB': 0.1,
+                'logVDss': 0.1,
+                'CYP3A4-inh': 0.1,
+                'CYP3A4-sub': 0.1,
+                'CYP2D6-inh': 0.1,
+                'CYP2D6-sub': 0.1,
+                'cl-plasma': 0.1,
+                't0.5': 0.1,
+                'DILI': 0.05,
+                'hERG': 0.05,
+                'Synth': 0.05,
+                'binding_affinity': 0.2  # Binding affinity weight (can adjust depending on its importance)
+            }
+        
+            # Compute a weighted fitness score (lower binding affinity is better, so invert its score)
+            fitness_score = (
+                lipinski * weights['Lipinski'] +
+                ppb * weights['PPB'] +
+                log_vdss * weights['logVDss'] +
+                cyp3a4_inh * weights['CYP3A4-inh'] +
+                cyp3a4_sub * weights['CYP3A4-sub'] +
+                cyp2d6_inh * weights['CYP2D6-inh'] +
+                cyp2d6_sub * weights['CYP2D6-sub'] +
+                cl_plasma * weights['cl-plasma'] +
+                t_half * weights['t0.5'] +
+                dili * weights['DILI'] +
+                herg * weights['hERG'] +
+                synth * weights['Synth'] +
+                (1 / binding_affinity) * weights['binding_affinity']  # Invert to reward lower values
+            )
+        
+            return fitness_score
+
 
         # Pareto Ranking, Filtration, and Clustering [Pareto Archive]
 
