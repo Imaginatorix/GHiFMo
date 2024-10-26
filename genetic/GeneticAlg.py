@@ -1,8 +1,12 @@
 import random
 import copy
+import numpy as np
 from Chromosome import *
 from GeneticMutation import *
 import pandas as pd
+from rdkit import Chem
+from rdkit.chem import rdFingerprintGenerator
+import joblib
 
 pop_size = 5
 gen_length = 20  # placeholder for molecular complexity
