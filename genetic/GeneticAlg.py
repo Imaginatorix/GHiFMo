@@ -14,7 +14,7 @@ mut_rate = 0.01  # probability of mutation happening (1% in this case)
 cross_rate = 0.07  # probability of doing crossover instead of returning parents
 generations = 200  # number of processes
 
-model_filepath = 'trained_model.pkl'
+model_filepath = 'trainer.pkl'
 gp = joblib.load(model_filepath)
 
 morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
