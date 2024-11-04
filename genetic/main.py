@@ -1,5 +1,6 @@
 import random
 import copy
+import numpy as np
 from Chromosome import *
 from GeneticMutation import *
 from rdkit import DataStructs
@@ -9,6 +10,8 @@ from sklearn.metrics import silhouette_score
 from scipy.cluster.hierarchy import linkage, fcluster
 import numpy as np
 import pandas as pd
+from rdkit.Chem import rdFingerprintGenerator
+import joblib
 
 POPULATION_SIZE = 5
 NUM_PARENTS = 5
@@ -19,6 +22,11 @@ GP_PATH = 'trained_model.pkl'
 gp = joblib.load(GP_PATH)
 morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
+
+model_filepath = 'trainer.pkl'
+gp = joblib.load(model_filepath)
+
+morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
 def random_molecule():
@@ -32,6 +40,16 @@ def random_molecule():
     ])
     return C_string
 
+
+def smiles_to_fingerprint(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is not None:
+        fp = morgan_gen.GetFingerprint(mol)
+        return np.array(fp)
+    return None
+
+
+# Initialize a population of random molecular structures
 def init_population():
     # Initialize a population of random molecular structures
     # return [random_molecule() for _ in range(pop_size)]
@@ -239,6 +257,82 @@ def get_scores(fitness_scores):
     return scores
 
 
+# Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
+
+
+# Change file path as to where the stored ADMET and SA values are
+def get_admet(file_path='C:\\A. Personal Files\\ReSearch\\A. Admet\\selenium\\1234.csv'):
+    # Load the CSV file
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        return "File not found. Please check the file path and name."
+    
+    # Define the columns to extract
+    columns_to_extract = ['smiles', 'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
+    
+    # Check if all columns exist in the dataset
+    missing_columns = [col for col in columns_to_extract if col not in df.columns]
+    if missing_columns:
+        return f"The following columns are missing in the dataset: {missing_columns}"
+    
+    # Extract the relevant columns
+    extracted_data = df[columns_to_extract]
+    
+    # Save extracted data to a new CSV file (Optional)
+    output_file_path = 'extracted_data.csv'
+    extracted_data.to_csv(output_file_path, index=False)
+    
+    return extracted_data
+
+    # Call the function to test (Optional)
+    # extracted_data = get_admet()
+    # print(extracted_data)
+
+def fitness(molecule):
+    # Extract ADMET-related properties from the molecule and store them in a tuple
+    extracted_data = (
+        molecule.get('Lipinski', 0.5),    # Lipinski's rule of five
+        molecule.get('PPB', 0.5),         # Plasma Protein Binding
+        molecule.get('logVDss', 0.5),     # Volume of Distribution
+        molecule.get('CYP3A4-inh', 0.5),  # CYP3A4 inhibition
+        molecule.get('CYP3A4-sub', 0.5),  # CYP3A4 substrate
+        molecule.get('CYP2D6-inh', 0.5),  # CYP2D6 inhibition
+        molecule.get('CYP2D6-sub', 0.5),  # CYP2D6 substrate
+        molecule.get('cl-plasma', 0.5),   # Plasma clearance
+        molecule.get('t0.5', 0.5),        # Half-life
+        molecule.get('DILI', 0.5),        # Drug-Induced Liver Injury
+        molecule.get('hERG', 0.5),        # hERG inhibition (cardiotoxicity risk)
+        molecule.get('Synth', 0.5)        # Synthetic accessibility
+    )
+    
+    # Predicted binding affinity (e.g., lower values are better for binding affinity)
+    binding_affinity = get_binding_affinity(molecule)
+
+    # Set weights for each property
+    weights = (
+        0.1,  # Lipinski
+        0.1,  # PPB
+        0.1,  # logVDss
+        0.1,  # CYP3A4-inh
+        0.1,  # CYP3A4-sub
+        0.1,  # CYP2D6-inh
+        0.1,  # CYP2D6-sub
+        0.1,  # cl-plasma
+        0.1,  # t0.5
+        0.05, # DILI
+        0.05, # hERG
+        0.05  # Synth
+    )
+
+    # Compute the fitness score using the extracted_data tuple and weights
+    fitness_score = sum(value * weight for value, weight in zip(extracted_data, weights))
+    fitness_score += (1 / binding_affinity) * 0.2  # Adjusted for binding affinity weight
+
+    return fitness_score
+
+    
 # Genetic Algorithm for molecular structures
 def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
     # Initialize population and archive
