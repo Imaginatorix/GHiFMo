@@ -1,6 +1,16 @@
 from Chromosome import *
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit.Chem import rdMolAlign
+from rdkit.Chem.Scaffolds import MurckoScaffold
+from rdkit.Chem.Draw import IPythonConsole
+from rdkit.Chem.Draw import MolDrawing, DrawingOptions
+import py3Dmol
+import numpy as np
 import random
 import json
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
 
 class Mutate():
     def __init__(self, head_atom: Atom, ring_manager: Ring_Manager):
@@ -25,12 +35,161 @@ class Mutate():
                     frontier.append(branch.atom)
 
 
+    def randomMutate(self):
+        mutation_type = random.choices(
+                        ["openRing", "closeRing", "vicinal", "atom", "fragment", "branch", "bond", "scaffold"], weights=
+                        [      0.08,        0.08,      0.18,   0.23,       0.05,     0.02,   0.18,       0.18])[0]
+        
+        i = 0
+        modified = False
+        while i < 5:
+            try:
+                if mutation_type == "scaffold":
+                    self.head_atom, self.ring_manager = self.ScaffoldHop()
+                    modified = True
+                    break
+                elif mutation_type == "openRing" and self.OpenRing():
+                    modified = True
+                    break
+                elif mutation_type == "closeRing" and self.CloseRing():
+                    modified = True
+                    break
+                elif mutation_type == "vicinal" and self.ExchangeVicinal():
+                    modified = True
+                    break
+                elif mutation_type == "atom" and self.MutateAtom():
+                    modified = True
+                    break
+                elif mutation_type == "fragment" and self.MutateFragment():
+                    modified = True
+                    break
+                elif mutation_type == "branch" and self.MutateBranch():
+                    modified = True
+                    break
+                elif mutation_type == "bond" and self.MutateBond():
+                    modified = True
+                    break
+            except Exception as e:
+                print(e)
+            i += 1
+
+        self.recount()
+        return modified
+
+
+    def ScaffoldHop(self):
+        smiles = atom_to_smiles(self.head_atom)
+        start_mol = Chem.MolFromSmiles(smiles)
+        # Your initial scaffold
+        scaffold = MurckoScaffold.GetScaffoldForMol(start_mol)
+        scaffold_with_R = Chem.ReplaceSidechains(start_mol, scaffold)
+        substituents_with_R = Chem.ReplaceCore(start_mol, scaffold)
+        # Gather scaffold hop suggestions from website
+        # https://peter-ertl.com/cgi/skeys/skeys.py?smiles=c1ccc(-c2ccccc2OC2CC2)nc1&coloring=tclass
+        page = urlopen(f"https://peter-ertl.com/cgi/skeys/skeys.py?smiles={Chem.MolToSmiles(scaffold)}&coloring=tclass").read()
+        script = BeautifulSoup(page, features="html.parser").findAll('script')[2].decode()
+        data = script.split("var hits=")[1].split(";")[0].replace(",}", "}")
+        data = json.loads(data)
+        # Scaffold suggestion
+        suggestion = Chem.MolFromSmiles(random.choice(data)["smiles"])
+
+        # Original attachment point indexes
+        scaffold_attachment_points = []
+        for atom in scaffold_with_R.GetAtoms():
+            if atom.GetSymbol() == "*":
+                scaffold_attachment_points.append(atom.GetIdx())
+
+        # Align molecules
+        NUM_CONFS = 250
+        p = AllChem.ETKDGv2()
+        p.verbose = True
+        scaffold_ = Chem.AddHs(scaffold)
+        suggestion_ = Chem.AddHs(suggestion)
+        AllChem.EmbedMultipleConfs(scaffold_, NUM_CONFS, p)
+        AllChem.EmbedMultipleConfs(suggestion_, NUM_CONFS, p)
+        mmff_params = [AllChem.MMFFGetMoleculeProperties(mol) for mol in [scaffold_, suggestion_]]
+        mmff_ref_param = mmff_params[0]
+        mmff_prob_params = mmff_params[1]
+        # Align scaffold B to scaffold A using O3A
+        tempscore = []
+        for cid in range(NUM_CONFS):
+            alignment = rdMolAlign.GetO3A(suggestion_, scaffold_, mmff_prob_params, mmff_ref_param, cid, 0)
+            alignment.Align()
+            tempscore.append(alignment.Score())
+        best = np.argmax(tempscore)
+
+        # Find atoms closest to attachment points
+        # Get the 3D coordinates of the attachment points in scaffold A
+        conf_A = scaffold_.GetConformer(0)
+        coords_A = np.array([conf_A.GetAtomPosition(pt) for pt in scaffold_attachment_points])
+        # Get the 3D coordinates of all atoms in scaffold B
+        conf_B = suggestion_.GetConformer(int(best))
+        coords_B = np.array([conf_B.GetAtomPosition(i) for i in range(suggestion_.GetNumAtoms()) if suggestion_.GetAtoms()[i].GetSymbol() != "H"])
+        # Find the closest atoms in scaffold B to the attachment points in scaffold A
+        suggestion_attachment_points = []
+        for coord_A in coords_A:
+            distances = np.linalg.norm(coords_B - coord_A, axis=1)
+            suggestion_attachment_points.append(np.argmin(distances))
+
+        # Add attachment points to suggestion
+        suggestion = Chem.RemoveHs(suggestion)
+        # Create an editable version of the molecule
+        editable_mol = Chem.EditableMol(suggestion)
+        attach_points = []
+        # Add the generic atom (use * for generic atom) and connect it
+        for i, idx in enumerate(suggestion_attachment_points):
+            attachment_point = editable_mol.AddAtom(Chem.Atom(0))  # Dummy atom (*)
+            attach_points.append(attachment_point)
+            editable_mol.AddBond(int(idx), attachment_point, order=Chem.BondType.SINGLE)
+        # Create the new molecule
+        suggestion_with_R = editable_mol.GetMol()
+        for i, point in enumerate(attach_points):
+            suggestion_with_R.GetAtomWithIdx(point).SetIsotope(i+1)
+        Chem.SanitizeMol(suggestion_with_R)
+
+        # Connect the attachment points together to create final molecule
+        # Create an editable version of the molecule
+        mol_to_connect = Chem.RemoveHs(Chem.CombineMols(suggestion_with_R, substituents_with_R))
+        R_groups_to_connect = {}
+        editable_final = Chem.EditableMol(mol_to_connect)
+        # Indexes to connect to respective attachment points
+        for atom in mol_to_connect.GetAtoms():
+            if atom.GetSymbol() == "*":
+                if not atom.GetIsotope() in R_groups_to_connect:
+                    R_groups_to_connect[atom.GetIsotope()] = []
+                R_groups_to_connect[atom.GetIsotope()].append(atom.GetIdx())
+        # Connect indexes
+        for attachment_points in R_groups_to_connect.values():
+            # Assume length is two
+            if len(attachment_points) != 2:
+                continue
+            a_ = mol_to_connect.GetAtomWithIdx(attachment_points[0]).GetNeighbors()
+            b_ = mol_to_connect.GetAtomWithIdx(attachment_points[1]).GetNeighbors()
+            for a in a_:
+                for b in b_:
+                    editable_final.AddBond(a.GetIdx(), b.GetIdx(), order=Chem.BondType.SINGLE)
+        # Remove atoms
+        while True:
+            broken = False
+            for atom in editable_final.GetMol().GetAtoms():
+                if atom.GetSymbol() == "*":
+                    editable_final.RemoveAtom(atom.GetIdx())
+                    broken = True
+                    break
+            if not broken:
+                break
+        # Create the new molecule
+        final = editable_final.GetMol()
+
+        return atom_from_smiles(Chem.MolFromSmiles(final))[0]
+
+
     def OpenRing(self):
         # Remove the ring bond and change it to H
         # Check if it needs re-rooting
         rings = list(self.ring_manager.rings.values())
         if len(rings) < 1:
-            return self
+            return True
 
         while len(rings) != 0:
             ring_group = rings.pop(random.randint(0, len(rings)-1))
@@ -116,13 +275,13 @@ class Mutate():
                     child = ring_group.members[0]
                     parent.add_branches([Branch(ring_group_closure_bond, child)])
             break
-        return self
+        return True
 
     def CloseRing(self):
         # Randomly pick two atoms (with Hydrogens) and connect
         # Chosen atom must not be vicinal (adjacent) or geminal (same)
         if len(self.atoms) <= 2:
-            return self
+            return True
 
         atoms = self.atoms.copy()
         atom_a = None
@@ -159,14 +318,14 @@ class Mutate():
             new_ring = self.ring_manager.add_ring()
             atom_a.add_branches([Branch("single", new_ring)])
             atom_b.add_branches([Branch("single", new_ring)])
-        return self
+        return True
 
 
     def ExchangeVicinal(self):
         # The purpose of this is to extend or contract rings
         # Exchange hydrogen with a singly bond substructure at an adjacent position
         if len(self.atoms) <= 2:
-            return self
+            return True
 
         atoms = self.atoms.copy()
         while len(atoms) != 0:
@@ -207,13 +366,13 @@ class Mutate():
                                 frontier.append(branch.atom)
                 break
 
-        return self
+        return True
 
 
     def CrossOver(self, mutate_head_atom):
         # Randomly pick two non-ring fragments of molecules and exchange
         if len(self.bonds) < 1 or len(mutate_head_atom.bonds) < 1:
-            return self
+            return True
 
         bonds_1 = self.bonds.copy()
         bonds_2 = mutate_head_atom.bonds.copy()
@@ -233,7 +392,7 @@ class Mutate():
                 break
 
             if not matching_bond:
-                return self
+                return False
 
             # Exchange rings in ring_manager
             # From self to mutate_bond_atom
@@ -278,14 +437,14 @@ class Mutate():
             other_atom.add_branches([bond_1])
 
             break
-        return self
+        return True
 
 
     def MutateAtom(self):
         # Pick an atom and change it to a new one with the same valence (or +-1 still making the molecule valid)
         # All supported atoms so far in the mutation
         if len(self.atoms) < 1:
-            return self
+            return True
 
         possible_atoms = {
             1: ["F", "Cl", "Br", "I"],
@@ -294,22 +453,32 @@ class Mutate():
             4: ["C", "Si"]
         }
 
+        possible_atoms_weight = {
+            1: [3, 5, 3, 3],
+            2: [5, 3, 1, 1],
+            3: [3, 5, 1, 3, 1],
+            4: [5, 1]
+        }
+
         atom = self.atoms.pop(random.randint(0, len(self.atoms)-1))
         atom_valence = atom.atom_valence()
         possible_mutations = possible_atoms[atom_valence]
+        possible_mutations_weights = possible_atoms_weight[atom_valence]
         if atom_valence < 4:
             possible_mutations += possible_atoms[atom_valence+1]
+            possible_mutations_weights += possible_atoms_weight[atom_valence+1]
         if atom_valence > 1 and atom.valence_remain() > 0:
             possible_mutations += possible_atoms[atom_valence-1]
+            possible_mutations_weights += possible_atoms_weight[atom_valence-1]
 
-        atom.value = element(random.choice(possible_mutations))
-        return self
+        atom.value = element(random.choices(possible_mutations, weights=possible_mutations_weights)[0])
+        return True
 
 
     def MutateFragment(self):
         # Pick a fragment and change it to a new one with the same length in the database
         if len(self.atoms) < 4:
-            return self
+            return True
 
         with open("data/fragments_transformations_frequency.json", "r") as f:
             all_fragments_frequency = json.load(f)
@@ -325,16 +494,16 @@ class Mutate():
             chosen_length = int(fragment_lengths.pop(random.randint(0, len(fragment_lengths)-1)))
 
         if chosen_length >= mol_length:
-            return self
+            return False
 
         fragment_weights = [all_fragments_frequency[fragment] for fragment in all_fragments_length[str(chosen_length)]]
-        chosen_fragment = random.choice(list(filter(lambda x: x.count("*") == 2, all_fragments_length[str(chosen_length)])))#, weights=fragment_weights)[0]
+        chosen_fragment = random.choices(all_fragments_length[str(chosen_length)], weights=fragment_weights)[0]
 
         # TODO: Fix valence issues
         try:
             chosen_fragment_hier = atom_from_smiles(chosen_fragment)
         except Exception:
-            return self
+            return False
 
         fragment_head = chosen_fragment_hier[0]
         fragment_ring_manager = chosen_fragment_hier[1]
@@ -362,7 +531,7 @@ class Mutate():
                         break
 
             if len(visited) < chosen_length+1:
-                return self
+                return False
 
             fragment_end = visited[len(visited)-chosen_length-1]
             if not self.ring_manager.part_of_ring(fragment_end):
@@ -447,7 +616,7 @@ class Mutate():
 
                 # If for some reason, attachment point is none, do nothing
                 if lower_attachment_point is None:
-                    return self
+                    return False
                 # Exchange fragments
                 # Connect higher end
                 # Remove traversed branch
@@ -492,13 +661,13 @@ class Mutate():
                         lower_attachment_point.branches.remove(branch)
                 lower_attachment_point.add_branches(branches_lower)
 
-        return self
+        return True
 
 
     def MutateBranch(self):
         # Replace branch with a fragment in the library
         if len(self.atoms) < 1:
-            return self
+            return True
 
         with open("data/fragments_transformations_branches.json", "r") as f:
             all_fragments_branches = json.load(f)
@@ -544,13 +713,13 @@ class Mutate():
             atom.add_branches(fragment_head.branches)
             break
 
-        return self
+        return True
 
 
     def MutateBond(self):
         # Remove/add Hydrogen to increase/decrease bond
         if len(self.bonds) < 1:
-            return self
+            return True
 
         bonds = self.bonds.copy()
         while len(bonds) != 0:
@@ -588,7 +757,7 @@ class Mutate():
 
             break
 
-        return self
+        return True
 
 
     def get_length(self):
