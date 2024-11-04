@@ -116,38 +116,36 @@ def get_binding_affinity():
 
 # Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
 
+
 # Change file path as to where the stored ADMET and SA values are
-def get_admet(file_path='C:\A. Personal Files\ReSearch\A. Admet\selenium\merged_excel.xlsx'):
+def get_admet(file_path='C:\\A. Personal Files\\ReSearch\\A. Admet\\selenium\\1234.csv'):
+    # Load the CSV file
     try:
-        df = pd.read_excel(file_path)
+        df = pd.read_csv(file_path)
     except FileNotFoundError:
         return "File not found. Please check the file path and name."
     
-    # Define the columns to extract#No CaCo2 and HIA
-    columns_to_extract = ['smiles' , 'Lipinski','PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+    # Define the columns to extract
+    columns_to_extract = ['smiles', 'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
                           'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
-     
+    
     # Check if all columns exist in the dataset
     missing_columns = [col for col in columns_to_extract if col not in df.columns]
     if missing_columns:
         return f"The following columns are missing in the dataset: {missing_columns}"
     
-        # Extract the relevant columns
-        extracted_data = df[columns_to_extract]
-        # No output yet. Not stored in .csv nor .xlsx file. 
-   
-        return extracted_data
-
-    # get_sa() # Uncomment this line to run it in a local environment
+    # Extract the relevant columns
+    extracted_data = df[columns_to_extract]
     
-    extracted_data = get_admet()
+    # Save extracted data to a new CSV file (Optional)
+    output_file_path = 'extracted_data.csv'
+    extracted_data.to_csv(output_file_path, index=False)
+    
+    return extracted_data
 
-    #Optional
-    print(extracted_data)
-
-    # When conversion is needed, just uncomment:
-    # extracted_columns = get_admet()
-    # extracted_columns.to_excel('extracted_data.xlsx', index=False)
+    # Call the function to test (Optional)
+    # extracted_data = get_admet()
+    # print(extracted_data)
 
 def fitness(molecule):
     # Extract ADMET-related properties from the molecule and store them in a tuple
