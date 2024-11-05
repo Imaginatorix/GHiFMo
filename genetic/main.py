@@ -18,14 +18,8 @@ NUM_PARENTS = 5
 MUT_RATE = 0.25
 CROSS_RATE = 1
 GENERATIONS = 200
-GP_PATH = 'trained_model.pkl'
+GP_PATH = 'genetic/trainer.pkl'
 gp = joblib.load(GP_PATH)
-morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
-
-
-model_filepath = 'trainer.pkl'
-gp = joblib.load(model_filepath)
-
 morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
