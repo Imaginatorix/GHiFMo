@@ -343,7 +343,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
 
     for generation in range(generations):
         # Parent Selection [Tournament Selection]
-        parents = select_parents(population, scores)
+        parents = select_parents(population, scores, num_parents)
 
         # Mutate
         offsprings_mutate = mutation(parents, mut_rate)
