@@ -8,10 +8,12 @@ from sklearn.metrics.pairwise import pairwise_distances
 from rdkit.Chem import AllChem
 from sklearn.metrics import silhouette_score
 from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
 from rdkit.Chem import rdFingerprintGenerator
 import joblib
+from binding_affinity_util import *
 
 POPULATION_SIZE = 5
 NUM_PARENTS = 5
@@ -19,8 +21,8 @@ MUT_RATE = 0.25
 CROSS_RATE = 1
 GENERATIONS = 200
 GP_PATH = 'genetic/trainer.pkl'
-gp = joblib.load(GP_PATH)
-morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+# gp = joblib.load(GP_PATH)
+# morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
 def random_molecule():
@@ -43,38 +45,44 @@ def smiles_to_fingerprint(smiles):
     return None
 
 
-# Initialize a population of random molecular structures
 def init_population():
     # Initialize a population of random molecular structures
-    # return [random_molecule() for _ in range(pop_size)]
-    pass
+    # return [atom_from_smiles("S=c1nc[nH]c2nc[nH]c12")]
+    population_chromosomes = [atom_from_smiles("Nc1nc(-c2cccs2)c(NC(=O)c2ccccc2)s1"), atom_from_smiles("CC(C)OC(=O)CC(=O)CSc1nc2c(cc1C#N)CCC2"),
+            atom_from_smiles("N#CC(C#N)=c1ccc2c(c1)NC1(CCCCC1)N=2"), atom_from_smiles("CCc1n[nH]c2c1/C(=N\O)CC(c1ccccc1)C2")]
 
+    return [Mutate(head_atom, ring_manager) for head_atom, ring_manager in population_chromosomes]
 
 def select_parents(population, scores, num_parents):
     # Select a parent based on scores [Tournament Selection]
     clustered = {}
     for i in range(len(population)):
-        if not scores[i][1] in clustered:
-            clustered[scores[i][1]] = []
-        clustered[scores[i][1]].append((population[i], scores[i][0]))
+        if not scores[i] in clustered:
+            clustered[scores[i]] = []
+        clustered[scores[i]].append((population[i], scores[i]))
 
     parents = []
     while len(parents) != num_parents:
-        for cluster, score in clustered.items():
-            parent1 = random.choice(score)
-            parent2 = random.choice(score)
+        for cluster, individual_scores in clustered.items():
+            parent1, rank1 = random.choice(individual_scores)
+            parent2, rank2 = random.choice(individual_scores)
 
-            if parent1[1] > parent2[1]:
-                parents.append(parent1[0])
+            # Better gets selected
+            if rank1 > rank2:
+                parents.append(parent2)
             else:
-                parents.append(parent2[0])
+                parents.append(parent1)
 
+            if len(parents) == num_parents:
+                break
     return parents
 
 
 def crossover(parents, cross_rate):
-    if parents % 2 != 0:
-        raise Exception("Invalid number of parents")
+    if len(parents) % 2 != 0:
+        parents = parents[:-1]
+        if len(parents) == 0:
+            return []
 
     offsprings = []
 
@@ -86,9 +94,10 @@ def crossover(parents, cross_rate):
             parent1 = copy.deepcopy(parent1_orig)
             parent2 = copy.deepcopy(parent2_orig)
 
+            tries = 5
             i = 0
-            while i < 5:
-                # Perform crossover (swap parts of the molecule) [try at least n times]
+            while i < tries:
+                # Perform crossover (swap parts of the molecule) [try at least <tries> times]
                 modified = parent1.CrossOver(parent2)
                 if modified:
                     # Append offsprings
@@ -111,7 +120,11 @@ def mutation(molecules, mut_rate):
 
 
 def smiles_to_fingerprint(smiles):
-    mol = Chem.MolFromSmiles(smiles)
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+    except Exception:
+        mol = None
+
     if mol is not None:
         fp = morgan_gen.GetFingerprint(mol)
         return np.array(fp)
@@ -130,36 +143,6 @@ def get_binding_affinity(molecule):
     return predicted_affinity
 
     # Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
-
-
-def get_admet(file_path='C:\\A. Personal Files\\ReSearch\\A. Admet\\selenium\\1234.csv'):
-    # Load the CSV file
-    try:
-        df = pd.read_csv(file_path)
-    except FileNotFoundError:
-        return "File not found. Please check the file path and name."
-    
-    # Define the columns to extract
-    columns_to_extract = ['smiles', 'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
-                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
-    
-    # Check if all columns exist in the dataset
-    missing_columns = [col for col in columns_to_extract if col not in df.columns]
-    if missing_columns:
-        return f"The following columns are missing in the dataset: {missing_columns}"
-    
-    # Extract the relevant columns
-    extracted_data = df[columns_to_extract]
-    
-    # Save extracted data to a new CSV file (Optional)
-    output_file_path = 'extracted_data.csv'
-    extracted_data.to_csv(output_file_path, index=False)
-    
-    return extracted_data
-
-    # Call the function to test (Optional)
-    # extracted_data = get_admet()
-    # print(extracted_data)
 
 
 def get_pareto_ranking(fitness_scores):
@@ -181,11 +164,20 @@ def get_pareto_ranking(fitness_scores):
 def get_cluster(molecules):
     # Create similarity matrix
     fpgen = AllChem.GetMorganGenerator()
-    molecules_fingerprint = [fpgen.GetFingerprint(atom_to_smiles(molecule)) for molecule in molecules]
-    dist_matrix = pairwise_distances(molecules_fingerprint, metric=lambda x, y: 1-DataStructs.TanimotoSimilarity(x, y))
+    molecules_fingerprint = [fpgen.GetFingerprint(Chem.MolFromSmiles(atom_to_smiles(molecule.head_atom))) for molecule in molecules]
 
+    # Manually calculate the Tanimoto distance matrix
+    n = len(molecules_fingerprint)
+    dist_matrix = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            tanimoto_sim = DataStructs.TanimotoSimilarity(molecules_fingerprint[i], molecules_fingerprint[j])
+            dist_matrix[i, j] = 1 - tanimoto_sim
+            dist_matrix[j, i] = dist_matrix[i, j]  # Matrix is symmetric
+
+    condensed_dist_matrix = squareform(dist_matrix)
     # Cluster the similarity matrix while identfying optimal number of clusters
-    cluster_linkage = linkage(dist_matrix, method='average', metric='precomputed')
+    cluster_linkage = linkage(condensed_dist_matrix, method='average')
     max_clusters = min(len(molecules)//2, 50)
     # Calculate silhouette score for each number of clusters
     silhouette_scores = []
@@ -202,68 +194,22 @@ def get_cluster(molecules):
     return labels
 
 
-def get_fitness(molecule):
-    # Extract ADMET-related properties from the molecule and store them in a tuple
-    extracted_data = (
-        molecule.get('Lipinski', 0.5),    # Lipinski's rule of five
-        molecule.get('PPB', 0.5),         # Plasma Protein Binding
-        molecule.get('logVDss', 0.5),     # Volume of Distribution
-        molecule.get('CYP3A4-inh', 0.5),  # CYP3A4 inhibition
-        molecule.get('CYP3A4-sub', 0.5),  # CYP3A4 substrate
-        molecule.get('CYP2D6-inh', 0.5),  # CYP2D6 inhibition
-        molecule.get('CYP2D6-sub', 0.5),  # CYP2D6 substrate
-        molecule.get('cl-plasma', 0.5),   # Plasma clearance
-        molecule.get('t0.5', 0.5),        # Half-life
-        molecule.get('DILI', 0.5),        # Drug-Induced Liver Injury
-        molecule.get('hERG', 0.5),        # hERG inhibition (cardiotoxicity risk)
-        molecule.get('Synth', 0.5)        # Synthetic accessibility
-    )
-    
-    # Predicted binding affinity (e.g., lower values are better for binding affinity)
-    binding_affinity = get_binding_affinity(molecule)
-
-    # Set weights for each property
-    weights = (
-        0.1,  # Lipinski
-        0.1,  # PPB
-        0.1,  # logVDss
-        0.1,  # CYP3A4-inh
-        0.1,  # CYP3A4-sub
-        0.1,  # CYP2D6-inh
-        0.1,  # CYP2D6-sub
-        0.1,  # cl-plasma
-        0.1,  # t0.5
-        0.05, # DILI
-        0.05, # hERG
-        0.05  # Synth
-    )
-
-    # Compute the fitness score using the extracted_data tuple and weights
-    fitness_score = sum(value * weight for value, weight in zip(extracted_data, weights))
-    fitness_score += (1 / binding_affinity) * 0.2  # Adjusted for binding affinity weight
-
-    return fitness_score
-
-
-def get_scores(fitness_scores):
+def get_scores(population, fitness_scores):
     # (Pareto Ranking, Cluster)
-    scores = list(zip(get_pareto_ranking(fitness_scores), get_cluster(fitness_scores)))
+    scores = list(zip(get_pareto_ranking(fitness_scores), get_cluster(population)))
     return scores
 
 
-# Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
-
-
-# Change file path as to where the stored ADMET and SA values are
-def get_admet(file_path='C:\\A. Personal Files\\ReSearch\\A. Admet\\selenium\\1234.csv'):
+def get_admet(file_path='./genetic/1234.csv'):
     # Load the CSV file
     try:
         df = pd.read_csv(file_path)
     except FileNotFoundError:
-        return "File not found. Please check the file path and name."
+        print("File not found. Please check the file path and name.")
+        return
     
     # Define the columns to extract
-    columns_to_extract = ['smiles', 'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+    columns_to_extract = ['Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
                           'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
     
     # Check if all columns exist in the dataset
@@ -272,68 +218,28 @@ def get_admet(file_path='C:\\A. Personal Files\\ReSearch\\A. Admet\\selenium\\12
         return f"The following columns are missing in the dataset: {missing_columns}"
     
     # Extract the relevant columns
-    extracted_data = df[columns_to_extract]
-    
-    # Save extracted data to a new CSV file (Optional)
-    output_file_path = 'extracted_data.csv'
-    extracted_data.to_csv(output_file_path, index=False)
-    
+    extracted_data = df[columns_to_extract].values
     return extracted_data
 
-    # Call the function to test (Optional)
-    # extracted_data = get_admet()
-    # print(extracted_data)
 
-def fitness(molecule):
-    # Extract ADMET-related properties from the molecule and store them in a tuple
-    extracted_data = (
-        molecule.get('Lipinski', 0.5),    # Lipinski's rule of five
-        molecule.get('PPB', 0.5),         # Plasma Protein Binding
-        molecule.get('logVDss', 0.5),     # Volume of Distribution
-        molecule.get('CYP3A4-inh', 0.5),  # CYP3A4 inhibition
-        molecule.get('CYP3A4-sub', 0.5),  # CYP3A4 substrate
-        molecule.get('CYP2D6-inh', 0.5),  # CYP2D6 inhibition
-        molecule.get('CYP2D6-sub', 0.5),  # CYP2D6 substrate
-        molecule.get('cl-plasma', 0.5),   # Plasma clearance
-        molecule.get('t0.5', 0.5),        # Half-life
-        molecule.get('DILI', 0.5),        # Drug-Induced Liver Injury
-        molecule.get('hERG', 0.5),        # hERG inhibition (cardiotoxicity risk)
-        molecule.get('Synth', 0.5)        # Synthetic accessibility
-    )
-    
+def get_fitness(molecule):
+    # Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
+    admet_props = get_admet().tolist()
+    admet_props = [tuple(admet_prop) for admet_prop in admet_props]
+
     # Predicted binding affinity (e.g., lower values are better for binding affinity)
-    binding_affinity = get_binding_affinity(molecule)
+    # binding_affinity = get_binding_affinity(molecule)
 
-    # Set weights for each property
-    weights = (
-        0.1,  # Lipinski
-        0.1,  # PPB
-        0.1,  # logVDss
-        0.1,  # CYP3A4-inh
-        0.1,  # CYP3A4-sub
-        0.1,  # CYP2D6-inh
-        0.1,  # CYP2D6-sub
-        0.1,  # cl-plasma
-        0.1,  # t0.5
-        0.05, # DILI
-        0.05, # hERG
-        0.05  # Synth
-    )
+    return admet_props
 
-    # Compute the fitness score using the extracted_data tuple and weights
-    fitness_score = sum(value * weight for value, weight in zip(extracted_data, weights))
-    fitness_score += (1 / binding_affinity) * 0.2  # Adjusted for binding affinity weight
 
-    return fitness_score
-
-    
 # Genetic Algorithm for molecular structures
 def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
     # Initialize population and archive
     population = init_population()
     # Get scores
     fitness_scores = get_fitness(population)
-    scores = get_scores(fitness_scores)
+    scores = get_scores(population, fitness_scores)
 
     for generation in range(generations):
         # Parent Selection [Tournament Selection]
@@ -345,23 +251,36 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         offsprings_crossover = crossover(parents, cross_rate)
 
         # New population
-        new_population = population + offsprings_mutate + offsprings_crossover
+        new_population_unfiltered = population + offsprings_mutate + offsprings_crossover
+
+        # Filter all invalid through rdkit
+        new_population = []
+        for molecule in new_population_unfiltered:
+            try:
+                Chem.MolFromSmiles(atom_to_smiles(molecule.head_atom))
+                new_population.append(molecule)
+            except Exception as e:
+                print(e)
+                pass
 
         # Get scores
         new_fitness_scores = get_fitness(new_population)
-        new_scores = get_scores(new_fitness_scores)
+        new_scores = get_scores(new_population, new_fitness_scores)
 
         # Population reduction until POPULATION_SIZE
         new_population_ = []
         new_scores_ = []
         sorted_new_population = sorted(dict(zip(new_population, new_scores)).items(), key=lambda x: x[1])
+        for individual, score in sorted_new_population[:POPULATION_SIZE]:
+            new_population_.append(individual)
+            new_scores_.append(score)
 
         # Set new population to population
         population = new_population_.copy()
         scores = new_scores_.copy()
 
         # Print best binding affinity
-        print(f"Generation {generation}: Best Fitness = {sorted_new_population[0][1]}")
+        print(f"Generation {generation}: {population}")
 
     print(population)
 

@@ -40,11 +40,13 @@ class Mutate():
                         ["openRing", "closeRing", "vicinal", "atom", "fragment", "branch", "bond", "scaffold"], weights=
                         [      0.08,        0.08,      0.18,   0.23,       0.05,     0.02,   0.18,       0.18])[0]
         
+        tries = 5
         i = 0
         modified = False
-        while i < 5:
+        while i < tries:
             try:
                 if mutation_type == "scaffold":
+                    break # NOTE
                     self.head_atom, self.ring_manager = self.ScaffoldHop()
                     modified = True
                     break
@@ -380,13 +382,13 @@ class Mutate():
         while len(bonds_1) != 0 and len(bonds_2) != 0:
             bond_1 = bonds_1.pop(random.randint(0, len(bonds_1)-1))
             # If parent of bond is part of ring
-            if self.ring_manager.part_of_ring(bond_1.from_atom):
+            if bond_1.from_atom is None or self.ring_manager.part_of_ring(bond_1.from_atom):
                 continue
 
             while len(bonds_2) != 0:
                 bond_2 = bonds_2.pop(random.randint(0, len(bonds_2)-1))
                 # If parent of bond is part of ring
-                if self.ring_manager.part_of_ring(bond_2.from_atom) or bond_2.category != bond_1.category:
+                if bond_2.from_atom is None or mutate_head_atom.ring_manager.part_of_ring(bond_2.from_atom) or bond_2.category != bond_1.category:
                     continue
                 matching_bond = True
                 break
@@ -405,6 +407,9 @@ class Mutate():
                     self.ring_manager.remove_ring(atom.identity)
                     # Add ring to new ring_manager
                     mutate_head_atom.ring_manager.add_ring(ring_closure_object=atom)
+
+                    # Remove reassigned ring closures
+                    frontier = list(filter(lambda x: x != atom, frontier))
                 else:
                     # Add branches
                     for branch in atom.branches:
@@ -419,6 +424,9 @@ class Mutate():
                     mutate_head_atom.ring_manager.remove_ring(atom.identity)
                     # Add ring to new ring_manager
                     self.ring_manager.add_ring(ring_closure_object=atom)
+
+                    # Remove reassigned ring closures
+                    frontier = list(filter(lambda x: x != atom, frontier))
                 else:
                     # Add branches
                     for branch in atom.branches:
@@ -429,8 +437,8 @@ class Mutate():
             other_atom = bond_2.from_atom
             # Remove connections
             self_atom.branches.remove(bond_1)
-            bond_1.from_atom = None
             other_atom.branches.remove(bond_2)
+            bond_1.from_atom = None
             bond_2.from_atom = None
             # Reconnect
             self_atom.add_branches([bond_2])
