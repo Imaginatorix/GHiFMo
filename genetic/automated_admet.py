@@ -1,4 +1,3 @@
-# automated_admet.py
 import os
 import time
 import glob
@@ -9,7 +8,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-def automated_admet(smiles_file_path, chromedriver_path, download_folder, batch_size=10):
+def automated_admet(
+    smiles_file_path=r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx",
+    chromedriver_path=r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe",
+    download_folder=r"C:\A. Personal Files\ReSearch\Final\download",
+    batch_size = 15):
     # Load SMILES data from the specified Excel file
     try:
         df = pd.read_excel(smiles_file_path)
@@ -99,3 +102,5 @@ def automated_admet(smiles_file_path, chromedriver_path, download_folder, batch_
     # Extract the relevant columns
     extracted_data = merged_df[columns_to_extract].values
     return extracted_data
+
+automated_admet()
