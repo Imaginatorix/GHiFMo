@@ -1,37 +1,101 @@
+# automated_admet.py
+import os
+import time
+import glob
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-import time
-import os
 
-# Set Chrome options
-options = webdriver.ChromeOptions()
-options.add_experimental_option("detach", True)
+def automated_admet(smiles_file_path, chromedriver_path, download_folder, batch_size=10):
+    # Load SMILES data from the specified Excel file
+    try:
+        df = pd.read_excel(smiles_file_path)
+        smiles_list = df['SMILES'].tolist()
+    except FileNotFoundError:
+        print("SMILES file not found. Please check the file path.")
+        return None
+    except KeyError:
+        print("The specified 'SMILES' column was not found in the file.")
+        return None
 
-# Initialize WebDriver
-PATH = r"C:\A. Personal Files\ReSearch\selenium\chromedriver-win64\chromedriver.exe"
-service = Service(PATH)
-driver = webdriver.Chrome(service=service)
+    # Set up Selenium options
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option("detach", True)
+    prefs = {"download.default_directory": download_folder}
+    options.add_experimental_option("prefs", prefs)
 
-# Open Google
-driver.get("https://www.google.com")
+    # Initialize the WebDriver
+    service = Service(chromedriver_path)
+    driver = webdriver.Chrome(service=service, options=options)
+    
+    try:
+        # Open ADMET Lab website
+        driver.get("https://admetlab3.scbdd.com/server/screening")
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
 
-# Locate the search input field using the 'name' attribute, which is more reliable
-search = driver.find_element(By.NAME, "q")
+        # Process SMILES in batches
+        for i in range(0, len(smiles_list), batch_size):
+            smiles_batch = smiles_list[i:i + batch_size]
+            smiles_string = "\n".join(smiles_batch)
 
-# Send search query to the input field
-search.send_keys("Stephen Curry")
-search.send_keys(Keys.RETURN)  # Press 'Enter' to submit the search
+            # Enter SMILES data into the input field
+            search = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "exampleFormControlTextarea1"))
+            )
+            search.clear()
+            search.send_keys(smiles_string)
+            time.sleep(3)
 
-# Wait for a while before navigating back
-time.sleep(10)
-driver.back()
+            # Submit the batch for processing
+            submit_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn.btn-success"))
+            )
+            submit_button.click()
 
-time.sleep(60)
+            # Wait for results to load and download the results
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "text-center")))
+            download_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "btn-outline-success"))
+            )
+            download_button.click()
 
-# Close the driver (optional)
-driver.quit()
+            # Wait for download to complete
+            time.sleep(5)
+            driver.get("https://admetlab3.scbdd.com/server/screening")
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+
+    finally:
+        # Close the driver after all downloads are complete
+        driver.quit()
+
+    # Merge downloaded CSV files
+    csv_files = glob.glob(os.path.join(download_folder, '*.csv'))
+    if not csv_files:
+        print("No CSV files were downloaded.")
+        return None
+
+    merged_df = pd.concat((pd.read_csv(f) for f in csv_files), ignore_index=True)
+    merged_output_path = os.path.join(download_folder, 'merged_output.csv')
+    merged_df.to_csv(merged_output_path, index=False)
+    print("Files have been merged into:", merged_output_path)
+
+    # Clean up the downloaded CSV files to avoid redundancy
+    for f in csv_files:
+        os.remove(f)
+
+    # Define columns to extract
+    columns_to_extract = ['Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
+    
+    # Check if all columns exist in the merged dataset
+    missing_columns = [col for col in columns_to_extract if col not in merged_df.columns]
+    if missing_columns:
+        print(f"The following columns are missing in the dataset: {missing_columns}")
+        return None
+
+    # Extract the relevant columns
+    extracted_data = merged_df[columns_to_extract].values
+    return extracted_data
