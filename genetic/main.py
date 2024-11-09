@@ -213,7 +213,6 @@ def get_scores(population, fitness_scores):
 
 
 def get_admet():
-    # Define paths and settings
     smiles_file_path = r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx"
     chromedriver_path = r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe"
     download_folder = r"C:\A. Personal Files\ReSearch\Final\download"
@@ -222,12 +221,10 @@ def get_admet():
                           'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
 
     # Run Selenium extraction
-    automated_admet_extraction(smiles_file_path, chromedriver_path, download_folder, batch_size)
+    automated_admet(smiles_file_path, chromedriver_path, download_folder, batch_size)
 
-    # Merge CSV files
+    # Merge CSV files and extract specified columns
     merged_df = merge_csv_files(download_folder)
-
-    # Extract specified columns
     if merged_df is not None:
         extracted_data = extract_columns(merged_df, columns_to_extract)
         if extracted_data is not None:
