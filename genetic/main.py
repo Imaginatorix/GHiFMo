@@ -19,22 +19,22 @@ from GeneticMutation import *
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 import joblib
-from binding_affinity_util import *
 from automated_admet import automated_admet  
 from admet_selenium_extraction import automated_admet_extraction
 from csv_file_merger import merge_csv_files
 from column_extraction import extract_columns
+from binding_affinity_extractor import get_binding_affinities 
 
-
+smiles_filepath = r'' #smiles sa evolved molecules
+model_filepath = 'genetic\trainer.pkl'
+predicted_affinity = get_binding_affinities(smiles_filepath, model_filepath)
+return predicted_affinity
 
 POPULATION_SIZE = 5
 NUM_PARENTS = 5
 MUT_RATE = 0.25
 CROSS_RATE = 1
 GENERATIONS = 200
-GP_PATH = 'genetic/trainer.pkl'
-# gp = joblib.load(GP_PATH)
-# morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
 def random_molecule():
@@ -141,21 +141,6 @@ def smiles_to_fingerprint(smiles):
         fp = morgan_gen.GetFingerprint(mol)
         return np.array(fp)
     return None
-
-
-def get_binding_affinity(molecule):
-    smiles = atom_to_smiles(molecule)
-    fingerprint = smiles_to_fingerprint(smiles)
-
-    if fingerprint is None:
-        print(f"Invalid molecule: {smiles}")
-        return float('-inf')  # Assign a very low score value if invalid
-
-    predicted_affinity = gp.predict([fingerprint])[0]
-    return predicted_affinity
-
-    # Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
-
 
 def get_pareto_ranking(fitness_scores):
     def dominates(sol1, sol2):
