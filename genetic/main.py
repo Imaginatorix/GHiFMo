@@ -21,9 +21,7 @@ from scipy.spatial.distance import squareform
 import joblib
 from automated_admet import automated_admet  
 from admet_selenium_extraction import automated_admet_extraction
-from csv_file_merger import merge_csv_files
-from column_extraction import extract_columns
-from binding_affinity_extractor import get_binding_affinities 
+
 
 smiles_filepath = r'' #smiles sa evolved molecules
 model_filepath = 'genetic\trainer.pkl'
@@ -198,22 +196,105 @@ def get_scores(population, fitness_scores):
 
 
 def get_admet():
+    # Define paths and parameters
     smiles_file_path = r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx"
     chromedriver_path = r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe"
     download_folder = r"C:\A. Personal Files\ReSearch\Final\download"
     batch_size = 15
-    columns_to_extract = ['Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
-                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
+    columns_to_extract = [
+        'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
+        'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth'
+    ]
+    
+    # Load SMILES data
+    try:
+        df = pd.read_excel(smiles_file_path)
+        smiles_list = df['SMILES'].tolist()
+    except FileNotFoundError:
+        print("SMILES file not found. Please check the file path.")
+        return None
+    except KeyError:
+        print("The specified 'SMILES' column was not found in the file.")
+        return None
 
-    # Run Selenium extraction
-    automated_admet(smiles_file_path, chromedriver_path, download_folder, batch_size)
+    # Set up Selenium options
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option("detach", True)
+    prefs = {"download.default_directory": download_folder}
+    options.add_experimental_option("prefs", prefs)
 
-    # Merge CSV files and extract specified columns
-    merged_df = merge_csv_files(download_folder)
-    if merged_df is not None:
-        extracted_data = extract_columns(merged_df, columns_to_extract)
-        if extracted_data is not None:
-            print("Extracted Data:", extracted_data)
+    # Initialize the WebDriver
+    service = Service(chromedriver_path)
+    driver = webdriver.Chrome(service=service, options=options)
+    
+    try:
+        # Open ADMET Lab website
+        driver.get("https://admetlab3.scbdd.com/server/screening")
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+
+        # Process SMILES in batches
+        for i in range(0, len(smiles_list), batch_size):
+            smiles_batch = smiles_list[i:i + batch_size]
+            smiles_string = "\n".join(smiles_batch)
+
+            # Enter SMILES data into the input field
+            search = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "exampleFormControlTextarea1"))
+            )
+            search.clear()
+            search.send_keys(smiles_string)
+            time.sleep(3)
+
+            # Submit the batch for processing
+            submit_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn.btn-success"))
+            )
+            submit_button.click()
+
+            # Wait for results to load and download the results
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "text-center")))
+            download_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "btn-outline-success"))
+            )
+            download_button.click()
+
+            # Wait for download to complete
+            time.sleep(5)
+            driver.get("https://admetlab3.scbdd.com/server/screening")
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+
+    finally:
+        # Close the driver after all downloads are complete
+        driver.quit()
+
+    # Merge downloaded CSV files
+    csv_files = glob.glob(os.path.join(download_folder, '*.csv'))
+    if not csv_files:
+        print("No CSV files were downloaded.")
+        return None
+
+    merged_df = pd.concat((pd.read_csv(f) for f in csv_files), ignore_index=True)
+    merged_output_path = os.path.join(download_folder, 'merged_output.csv')
+    merged_df.to_csv(merged_output_path, index=False)
+    print("Files have been merged into:", merged_output_path)
+
+    # Clean up the downloaded CSV files to avoid redundancy
+    for f in csv_files:
+        os.remove(f)
+
+    # Check if all columns exist in the merged dataset
+    missing_columns = [col for col in columns_to_extract if col not in merged_df.columns]
+    if missing_columns:
+        print(f"The following columns are missing in the dataset: {missing_columns}")
+        return None
+
+    # Extract the relevant columns
+    extracted_data = merged_df[columns_to_extract].values
+    print("Extracted Data:", extracted_data)
+    return extracted_data
+
+# Run the ADMET automation and data extraction
+get_admet()
 
 
 def get_fitness(molecule):
