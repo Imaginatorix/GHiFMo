@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process.kernels import Kernel
@@ -42,10 +41,7 @@ def smiles_to_fingerprint(smiles):
         return np.array(fp)
     return None
 
-def load_novel_smiles(filepath):
-    data = pd.read_csv(filepath, delimiter=';') 
-    smiles_list = data['Smiles'].tolist()
-
+def process_smiles(smiles_list):
     fingerprints = []
     valid_smiles = []
     invalid_smiles = []
@@ -59,19 +55,17 @@ def load_novel_smiles(filepath):
             invalid_smiles.append(smiles) 
 
     if invalid_smiles:
-        print(f"Warning: Invalid SMILES found and ignored: {invalid_smiles}")
+        print(f"Ignored invalid smiles: {invalid_smiles}")
 
     fingerprints = np.array(fingerprints)
     return valid_smiles, fingerprints
 
-def get_binding_affinities(smiles_filepath, model_filepath):
+def get_binding_affinities(smiles_list, model_filepath):
     gp = joblib.load(model_filepath)
-    novel_smiles, X_novel = load_novel_smiles(smiles_filepath)
+    valid_smiles, X_novel = process_smiles(smiles_list)
 
     if len(X_novel) == 0:
         raise ValueError("No valid fingerprints found.")
 
     predicted_affinities = gp.predict(X_novel)
-
-
     return predicted_affinities
