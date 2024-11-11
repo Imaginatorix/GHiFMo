@@ -22,6 +22,7 @@ import joblib
 from automated_admet import automated_admet  
 from admet_selenium_extraction import automated_admet_extraction
 from binding_affinity_extractor import get_binding_affinities
+
 POPULATION_SIZE = 5
 NUM_PARENTS = 5
 MUT_RATE = 0.25
@@ -30,7 +31,7 @@ GENERATIONS = 200
 
 
 def binding_affinity(molecules):
-    smiles = [atom_to_smiles(molecule) for molecule in molecules]
+    #smiles_list = [atom_to_smiles(molecule) for molecule in molecules]
     model_filepath = 'genetic\trainer.pkl'
     predicted_affinity = get_binding_affinities(smiles, model_filepath)
     
