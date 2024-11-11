@@ -25,8 +25,7 @@ from admet_selenium_extraction import automated_admet_extraction
 
 smiles_filepath = r'' #smiles sa evolved molecules
 model_filepath = 'genetic\trainer.pkl'
-predicted_affinity = get_binding_affinities(smiles_filepath, model_filepath)
-return predicted_affinity
+
 
 POPULATION_SIZE = 5
 NUM_PARENTS = 5
@@ -34,6 +33,12 @@ MUT_RATE = 0.25
 CROSS_RATE = 1
 GENERATIONS = 200
 
+
+def binding_affinity(molecules):
+    smiles = [atom_to_smiles(molecule) for molecule in molecules]
+    predicted_affinity = get_binding_affinities(smiles_filepath, model_filepath)
+    
+    return predicted_affinity
 # Create a simple molecular structure as a genome (analogous to random_genome in basic GA)
 def random_molecule():
     C_string_ring = Ring_Manager()
