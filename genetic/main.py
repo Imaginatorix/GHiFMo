@@ -302,7 +302,7 @@ def get_fitness(molecules):
     admet_props = get_admet().tolist()
 
     # Predicted binding affinity (e.g., lower values are better for binding affinity)
-    binding_affinity = get_binding_affinity(molecules)
+    binding_affinity = get_binding_affinities(molecules)
     for i in range(len(admet_props)):
         admet_props[i].append(binding_affinity[i])
 
