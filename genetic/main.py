@@ -197,18 +197,12 @@ def get_scores(population, fitness_scores):
     return scores
 
 
-def get_admet():
-    # Define paths and parameters
-    smiles_file_path = r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx"
-    chromedriver_path = r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe"
-    download_folder = r"C:\A. Personal Files\ReSearch\Final\download"
-    batch_size = 15
-    columns_to_extract = [
-        'Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
-        'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth'
-    ]
-    
-    # Load SMILES data
+def get_admet(
+    smiles_file_path=r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx",
+    chromedriver_path=r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe",
+    download_folder=r"C:\A. Personal Files\ReSearch\Final\download",
+    batch_size=15):
+
     try:
         df = pd.read_excel(smiles_file_path)
         smiles_list = df['SMILES'].tolist()
@@ -219,81 +213,85 @@ def get_admet():
         print("The specified 'SMILES' column was not found in the file.")
         return None
 
-    # Set up Selenium options
     options = webdriver.ChromeOptions()
     options.add_experimental_option("detach", True)
     prefs = {"download.default_directory": download_folder}
     options.add_experimental_option("prefs", prefs)
 
-    # Initialize the WebDriver
     service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=options)
     
     try:
-        # Open ADMET Lab website
-        driver.get("https://admetlab3.scbdd.com/server/screening")
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+        driver.get("https://admet.ai.greenstonebio.com/")
 
-        # Process SMILES in batches
         for i in range(0, len(smiles_list), batch_size):
             smiles_batch = smiles_list[i:i + batch_size]
             smiles_string = "\n".join(smiles_batch)
 
-            # Enter SMILES data into the input field
             search = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "exampleFormControlTextarea1"))
+                EC.presence_of_element_located((By.ID, "text-smiles-input"))
             )
             search.clear()
             search.send_keys(smiles_string)
             time.sleep(3)
 
-            # Submit the batch for processing
             submit_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn.btn-success"))
+                EC.element_to_be_clickable((By.ID, "predict-button"))
             )
             submit_button.click()
 
-            # Wait for results to load and download the results
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "text-center")))
             download_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CLASS_NAME, "btn-outline-success"))
+                # EC.element_to_be_clickable((By.CSS_SELECTOR, "button.btn.btn-primary"))
+                EC.element_to_be_clickable((By.XPATH, '//button[text()="Download Results"]'))
             )
             download_button.click()
 
-            # Wait for download to complete
-            time.sleep(5)
-            driver.get("https://admetlab3.scbdd.com/server/screening")
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+            time.sleep(5)  # Wait for download to complete (improve logic here if necessary)
+            driver.get("https://admet.ai.greenstonebio.com")
 
     finally:
-        # Close the driver after all downloads are complete
         driver.quit()
 
-    # Merge downloaded CSV files
+    # Get all CSV files in the download folder
     csv_files = glob.glob(os.path.join(download_folder, '*.csv'))
+
+    # Check if no CSV files are found
     if not csv_files:
         print("No CSV files were downloaded.")
         return None
 
-    merged_df = pd.concat((pd.read_csv(f) for f in csv_files), ignore_index=True)
-    merged_output_path = os.path.join(download_folder, 'merged_output.csv')
-    merged_df.to_csv(merged_output_path, index=False)
-    print("Files have been merged into:", merged_output_path)
+    # Check if there is only one CSV file
+    if len(csv_files) == 1:
+        print("Only one CSV file found. Skipping merging.")
+        merged_df = pd.read_csv(csv_files[0])  # Directly load the single CSV file
+    else:
+        # If multiple files exist, merge them
+        merged_df = pd.concat((pd.read_csv(f) for f in csv_files), ignore_index=True)
+        merged_output_path = os.path.join(download_folder, 'merged_output.csv')
+        merged_df.to_csv(merged_output_path, index=False)
+        print("Files have been merged into:", merged_output_path)
 
-    # Clean up the downloaded CSV files to avoid redundancy
-    for f in csv_files:
-        os.remove(f)
+        # Remove the original CSV files after merging
+        for f in csv_files:
+            os.remove(f)
 
-    # Check if all columns exist in the merged dataset
+    # Define the columns to extract (for ADMET-Ai only)
+    columns_to_extract = [
+        'Lipinski', 'PPBR_AZ', 'VDss_Lombardo', 'CYP3A4_Veith', 'CYP3A4_Substrate_CarbonMangels',
+        'CYP2D6_Veith', 'CYP2D6_Substrate_CarbonMangels', 'Clearance_Hepatocyte_AZ', 'Clearance_Microsome_AZ',
+        'Half_Life_Obach', 'DILI', 'hERG'
+    ]
+
+    # Check if all columns exist in the dataset
     missing_columns = [col for col in columns_to_extract if col not in merged_df.columns]
     if missing_columns:
         print(f"The following columns are missing in the dataset: {missing_columns}")
         return None
 
-    # Extract the relevant columns
+    # Extract the relevant data
     extracted_data = merged_df[columns_to_extract].values
-    print("Extracted Data:", extracted_data)
     return extracted_data
+
 
 # Run the ADMET automation and data extraction
 get_admet()
