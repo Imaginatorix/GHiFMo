@@ -19,8 +19,6 @@ from GeneticMutation import *
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 import joblib
-from automated_admet import automated_admet  
-from admet_selenium_extraction import automated_admet_extraction
 from binding_affinity_predictor import get_binding_affinities
 
 POPULATION_SIZE = 5
@@ -198,9 +196,9 @@ def get_scores(population, fitness_scores):
 
 
 def get_admet(
-    smiles_file_path=r"C:\A. Personal Files\ReSearch\Final\download\smiles.xlsx",
-    chromedriver_path=r"C:\A. Personal Files\ReSearch\Final\chromedriver-win64\chromedriver.exe",
-    download_folder=r"C:\A. Personal Files\ReSearch\Final\download",
+    smiles_file_path=r".\downloads\smiles.xlsx",
+    chromedriver_path=r".\chromedriver-win64\chromedriver.exe",
+    download_folder=r".\downloads",
     batch_size=15):
 
     try:
@@ -291,10 +289,6 @@ def get_admet(
     # Extract the relevant data
     extracted_data = merged_df[columns_to_extract].values
     return extracted_data
-
-
-# Run the ADMET automation and data extraction
-get_admet()
 
 
 def get_fitness(molecules):
