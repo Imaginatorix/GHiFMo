@@ -299,14 +299,16 @@ def get_admet():
 get_admet()
 
 
-def get_fitness(molecule):
+def get_fitness(molecules):
     # Get Admet and Get SA are merged. "predicted_affinity" values are directly plugged into the "binding_affinity" in 'def fitness()' for fitness calculation
     admet_props = get_admet().tolist()
-    admet_props = [tuple(admet_prop) for admet_prop in admet_props]
 
     # Predicted binding affinity (e.g., lower values are better for binding affinity)
-    # binding_affinity = get_binding_affinity(molecule)
+    binding_affinity = get_binding_affinity(molecules)
+    for i in range(len(admet_props)):
+        admet_props[i].append(binding_affinity[i])
 
+    admet_props = [tuple(admet_prop) for admet_prop in admet_props]
     return admet_props
 
 
