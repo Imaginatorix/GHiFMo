@@ -316,11 +316,17 @@ def get_fitness(molecules):
 def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
     # Initialize population and archive
     population = init_population()
-    # Get scores
-    fitness_scores = get_fitness(population)
-    scores = get_scores(population, fitness_scores)
 
     for generation in range(generations):
+        # Get scores
+        fitness_scores = get_fitness(population)
+        scores = get_scores(population, fitness_scores)
+        # Pareto archive
+        pareto_archive = []
+        for i in range(len(population)):
+            if scores[i][1] == 0:
+                pareto_archive.append(population[i])
+
         # Parent Selection [Tournament Selection]
         parents = select_parents(population, scores, num_parents)
 
@@ -330,7 +336,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         offsprings_crossover = crossover(parents, cross_rate)
 
         # New population
-        new_population_unfiltered = population + offsprings_mutate + offsprings_crossover
+        new_population_unfiltered = list(set(population + offsprings_mutate + offsprings_crossover + pareto_archive))
 
         # Filter all invalid through rdkit
         new_population = []
@@ -346,17 +352,51 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         new_fitness_scores = get_fitness(new_population)
         new_scores = get_scores(new_population, new_fitness_scores)
 
-        # Population reduction until POPULATION_SIZE
+        pareto_archive = []
+        for i in range(len(population)):
+            if scores[i][1] == 0:
+                pareto_archive.append(population[i])
+
+        # Look-up table {Mutate: (rank, cluster)}
+        new_population_look_up = dict(zip(new_population, new_scores))
+        # Create a dictionary {cluster: [Mutate]}
+        new_population_clusters = {}
+        # Create a dictionary {cluster: average rank}
+        new_population_cluster_rank = {}
+
+        # Populate dictionaries
+        for individual, score in zip(new_population, new_scores):
+            if not score[1] in new_population_clusters:
+                new_population_clusters[score[1]] = []
+            if not score[1] in new_population_cluster_rank:
+                new_population_cluster_rank[score[1]] = []
+
+            new_population_clusters[score[1]].append(individual)
+            new_population_cluster_rank[score[1]].append(score[0])
+
+        # Take sort [Mutate] by rank
+        for cluster in new_population_clusters:
+            new_population_clusters[cluster] = sorted(new_population_clusters[cluster], key=lambda x: new_population_look_up[x][0])
+
+        # Take average of cluster_rank
+        for cluster in new_population_cluster_rank:
+            ranks = new_population_cluster_rank[cluster]
+            new_population_cluster_rank[cluster] = sum(ranks)/len(ranks)
+
+        # Sort clusters, so higher ranking (lower numbers) would be picked first
+        sorted_clusters = sorted(list(new_population_cluster_rank.keys()), key=lambda x: new_population_cluster_rank[x])
+
+        # Population picking until POPULATION_SIZE
         new_population_ = []
-        new_scores_ = []
-        sorted_new_population = sorted(dict(zip(new_population, new_scores)).items(), key=lambda x: x[1])
-        for individual, score in sorted_new_population[:POPULATION_SIZE]:
-            new_population_.append(individual)
-            new_scores_.append(score)
+        loops = 0
+        while len(new_population_) < POPULATION_SIZE:
+            for cluster in sorted_clusters:
+                individual = new_population_clusters[cluster]
+                new_population_.append(individual)
+            loops += 1
 
         # Set new population to population
         population = new_population_.copy()
-        scores = new_scores_.copy()
 
         # Print best binding affinity
         print(f"Generation {generation}: {population}")
