@@ -3,9 +3,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdMolAlign
 from rdkit.Chem.Scaffolds import MurckoScaffold
-from rdkit.Chem.Draw import IPythonConsole
-from rdkit.Chem.Draw import MolDrawing, DrawingOptions
-import py3Dmol
 import numpy as np
 import random
 import json
