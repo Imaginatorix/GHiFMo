@@ -24,7 +24,7 @@ import json
 
 POPULATION_SIZE = 1000
 NUM_PARENTS = 5
-MUT_RATE = 0.25
+MUT_RATE = 1
 CROSS_RATE = 1
 GENERATIONS = 200
 
@@ -33,7 +33,9 @@ def init_population():
     # population_chromosomes = [atom_from_smiles("Nc1nc(-c2cccs2)c(NC(=O)c2ccccc2)s1"), atom_from_smiles("CC(C)OC(=O)CC(=O)CSc1nc2c(cc1C#N)CCC2"),
     #         atom_from_smiles("N#CC(C#N)=c1ccc2c(c1)NC1(CCCCC1)N=2"), atom_from_smiles("CCc1n[nH]c2c1/C(=N\O)CC(c1ccccc1)C2")]
 
-    population_chromosomes = [atom_from_smiles("S=c1nc[nH]c2nc[nH]c12")]
+    # molecules = [mercaptopurine, tioguanine, methotrexate, cytarabine]
+    molecules = ["S=c1nc[nH]c2nc[nH]c12", "Nc2nc(=S)c1[nH]cnc1[nH]2", "O=C([C@H](CCC(O)=O)NC(C1=CC=C(N(CC2=CN=C(N=C(N)N=C3N)C3=N2)C)C=C1)=O)O", "O=C1/N=C(/N)\C=C/N1[C@@H]2O[C@@H]([C@@H](O)[C@@H]2O)CO"]
+    population_chromosomes = [atom_from_smiles(smiles_string) for smiles_string in molecules]
     return [Mutate(head_atom, ring_manager) for head_atom, ring_manager in population_chromosomes]
 
 
@@ -246,7 +248,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
 
         pareto_archive = []
         for i in range(len(population)):
-            if scores[i][1] == 0:
+            if scores[i][1] == 1:
                 pareto_archive.append(population[i])
 
         # Look-up table {Mutate: (rank, cluster)}
@@ -282,12 +284,20 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         new_population_ = []
         loops = 0
         while len(new_population_) < POPULATION_SIZE:
+            error = 0
             for cluster in sorted_clusters:
+                if loops >= len(new_population_clusters[cluster]):
+                    error += 1
+                    continue
+
                 individual = new_population_clusters[cluster][loops]
                 new_population_.append(individual)
 
                 if len(new_population_) >= POPULATION_SIZE:
                     break
+
+            if error >= len(sorted_clusters):
+                break
             loops += 1
 
         # Set new population to population
@@ -299,7 +309,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Save history to log.json
         history.append({
             "population": [atom_to_smiles(individual.head_atom) for individual in population],
-            "pareto_archive": pareto_archive
+            "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive]
         })
         with open(log_path, "w") as f:
             json.dump(history, f)
