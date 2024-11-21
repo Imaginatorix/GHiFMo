@@ -15,9 +15,13 @@ def automated_admet(
     download_folder=r".\downloads",
     batch_size=1000):
 
+    # Ensure download folder exists
+    if not os.path.exists(download_folder):
+        os.makedirs(download_folder)
+
     # Set up Selenium options
     options = webdriver.ChromeOptions()
-    options.add_experimental_option("detach", True)
+    options.add_experimental_option("detach", False)
     prefs = {"download.default_directory": os.path.abspath(download_folder)}
     options.add_experimental_option("prefs", prefs)
 
@@ -41,7 +45,6 @@ def automated_admet(
             )
             search.clear()
             search.send_keys(smiles_string)
-            time.sleep(3)
 
             # Submit the batch for processing
             submit_button = WebDriverWait(driver, 10).until(
@@ -54,13 +57,18 @@ def automated_admet(
             )
             download_button.click()
 
-            # Wait for download to complete
-            time.sleep(5)
+            # Wait for the file to be downloaded
+            downloaded_files = glob.glob(os.path.join(download_folder, '*.csv'))
+            WebDriverWait(driver, 60).until(
+                lambda _: len(glob.glob(os.path.join(download_folder, '*.csv'))) > len(downloaded_files)
+            )
+
+            # Navigate back for the next batch
             driver.get("https://admetlab3.scbdd.com/server/screening")
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
 
     finally:
-        # Close the driver after all downloads are complete
+        # Ensure the WebDriver is closed
         driver.quit()
 
     # Find all CSV files in the download folder
