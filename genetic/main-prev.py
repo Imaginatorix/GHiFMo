@@ -29,23 +29,23 @@ import copy
 
 # mercaptopurine.show()
 
-C_string_ring = Ring_Manager()
-C_string =       Atom("C").add_branches([
-Branch("single", Atom("N").add_branches([
-Branch("single", Atom("O").add_branches([
-Branch("single", Atom("Cl").add_branches([
-]))
-]))
-]))
-])
+# C_string_ring = Ring_Manager()
+# C_string =       Atom("C").add_branches([
+# Branch("single", Atom("N").add_branches([
+# Branch("single", Atom("O").add_branches([
+# Branch("single", Atom("Cl").add_branches([
+# ]))
+# ]))
+# ]))
+# ])
 
-C_string_ring_copy = Ring_Manager
-C_string_copy = copy.deepcopy(C_string)
+# C_string_ring_copy = Ring_Manager
+# C_string_copy = copy.deepcopy(C_string)
 
-C_string.show()
+# C_string.show()
 
-a = Mutate(C_string, C_string_ring)
-b = Mutate(C_string_copy, C_string_ring_copy)
+# a = Mutate(C_string, C_string_ring)
+# b = Mutate(C_string_copy, C_string_ring_copy)
 
 # print("Close Ring")
 # a.CloseRing()
@@ -108,7 +108,9 @@ b = Mutate(C_string_copy, C_string_ring_copy)
 # print(atom_to_smiles(atom_from_smiles("*C(=O)Cc1c(C)n(*)c2ccc(OC)cc12")[0]))
 
 
-a.randomMutate()
+# a.randomMutate()
 
+atom_from_smiles("S=c1nc[nH]c2nc[nH]c12")[0].show()
+atom_from_smiles("Nc2nc(=S)c1[nH]cnc1[nH]2")[0].show()
 
 

@@ -23,10 +23,10 @@ from admet_selenium_extraction import automated_admet
 import json
 
 POPULATION_SIZE = 1000
-NUM_PARENTS = 5
+NUM_PARENTS = POPULATION_SIZE
 MUT_RATE = 1
 CROSS_RATE = 1
-GENERATIONS = 200
+GENERATIONS = 1000
 
 def init_population():
     # Initialize a population of random molecular structures
@@ -188,7 +188,7 @@ def get_fitness(molecules):
         admet_props[i].append(binding_affinity[i])
 
     for i in range(len(admet_props)):
-        for index in [2, 3, 4, 9, 10, 11, 12]:
+        for index in [0, 2, 4, 6, 8, 9, 11, 12]:
             admet_props[i][index] = -admet_props[i][index]
     admet_props = [tuple(admet_prop) for admet_prop in admet_props]
 
@@ -225,7 +225,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         parents = select_parents(population, scores, num_parents)
 
         # Mutate
-        offsprings_mutate = mutation(parents, mut_rate)
+        offsprings_mutate = mutation(population, mut_rate)
         # Crossover
         offsprings_crossover = crossover(parents, cross_rate)
 
@@ -248,7 +248,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
 
         pareto_archive = []
         for i in range(len(population)):
-            if scores[i][1] == 1:
+            if scores[i][1] == 0:
                 pareto_archive.append(population[i])
 
         # Look-up table {Mutate: (rank, cluster)}

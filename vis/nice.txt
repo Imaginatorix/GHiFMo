@@ -1,0 +1,44 @@
+S=c1nc[nH]c2nc[nH]c12
+Nc1nc(=S)c2[nH]cnc2[nH]1
+C=C(CCCOC)N=C(N)S
+C=C(CCl)N=C(N)S
+S=c1nc2[nH]c3nc([nH]c13)N2
+N=c1[nH]c(=S)c2[nH]cnc2[nH]1
+Cc1c(=S)ncn2[nH]cnc12
+C=C(CCC(C)O)N=C(N)NN
+
+
+S=c1nc[nH]c2nc[nH]c12 - Mercaptopurine
+Nc1nc(=S)c2[nH]cnc2[nH]1 - Tioguanine
+C=C(CCl)N=C(N)S - 3-amino-3-chloro-2-(methylthio)prop-2-en-1-imine
+S=c1nc2[nH]c3nc([nH]c13)N2 - 1H-imidazo[1,5-a][1,3,5]triazine-4-thione
+Cc1c(=S)ncn2[nH]cnc12 - 2-methyl-1H-imidazo[1,2-a]pyrimidine-5-thione
+
+
+
+Paniniwalang ang teoryang ito ay maaaring malapat din sa konteksto ng Game-based environment o Quizbowl. Maaaring ikumpara ng mga miyembro ng pangkat ang kanilang kakayahang mag-ambag sa kanilang pangkat, na maaaring makaapekto sa kanilang self-esteem, damdamin, at konsepto ng sarili. Maaari rin itong magdulot ng pakiramdam ng inferiority o dominance, na siyang makakaapekto sa kanilang performance at pakikilahok. Sa partikular, ang upward comparisons o pagkukumpara sa mas magagaling na kasamahan ay maaaring magdulot ng motibasyon upang pagbutihin ang sarili, ngunit maaari rin itong magdulot ng kawalang-gana o pagiging kampante. Ang isang kalahok na nakakaramdam ng inferiority ay maaaring umasa na lamang sa mas malalakas na kasamahan, na nagbabawas ng kanilang pakikilahok. Ang mga miyembrong gumagawa ng mas maraming upward comparisons ay maaaring makaramdam na kaya nang dalhin ng kanilang mga kasamahan ang mga gawain sa Quizbowl. Dahil dito, maaari silang mag-"free ride" o umasa na lamang sa iba upang maiwasang makaapekto nang masama sa reputasyon ng grupo. Sa kabilang banda, ang downward comparisons o pagkukumpara sa mas mahihinang kasamahan ay maaaring magdulot ng anxiety. Ang mga miyembrong madalas mag-downward comparisons ay maaaring makaramdam ng matinding pressure na manalo sa Quizbowl o maiwasang sila ang maging dahilan ng pagkatalo ng grupo. Dahil dito, maaari silang magkaroon ng kagustuhang dominahin ang diskusyon ng grupo, sapagkat mararamdaman nila na nasa kanilang mga balikat ang tagumpay o kabiguan ng buong grupo. Isang modelo sa Social Comparison Theory, ang proxy model, ay maaaring magpaliwanag kung paano tinataya ng mga miyembro ang kakayahan ng kanilang mga kasamahan. Halimbawa, kung kilala ang isang kapwa mag-aaral dahil sa magagandang nakaraang tagumpay, maaaring isipin ng iba na magaling din sila sa Quizbowl. Sa konteksto ng Quizbowl, maaaring pag-aralan ang mga tiyak na epekto nito sa self-concept ng mga miyembro. Isa sa hinuha ng teorya ay habang lumalayo ang opinyon o kakayahan ng isang miyembro sa iba, mas bumababa ang tendensiyang magkumpara. Gayunpaman, sa kaso ng Quizbowl, nagiging mas makitid ang pagkakaibang ito sapagkat ang grupo ay may iisang layunin—ang makakuha ng pinakamaraming puntos. Ang sitwasyong ito ay nagdudulot ng mas mataas na tendensiyang magkumpara ang mga miyembro sa isa’t isa. Bukod dito, anumang salik na nagpapataas ng halaga ng grupo bilang batayan ng pagkukumpara ay nagdaragdag ng pressure tungo sa pagkakapare-pareho ng opinyon o kakayahan sa loob ng grupo. Sa Quizbowl, ang pinakamahalagang salik na nakakaapekto sa performance ay ang kaalaman sa mga aralin ng kasalukuyang quarter at maging ng mga nakaraang taon. Dahil dito, maaaring maramdaman ng mga miyembro ang pangangailangang bawasan ang pagkakaiba sa kanilang kaalaman sa pamamagitan ng pagkukumpara kung nasaan ang kanilang puwesto sa grupo. Gayunpaman, kung masyadong malaki ang pagkakaiba, maaari itong magdulot ng mga negatibong epekto tulad ng nabanggit na inferiority o dominance. Isang karagdagang hinuha ang nagsasabing kung may pagkakaiba-iba ng opinyon sa isang grupo, ang mga miyembrong mas malapit sa mode (o karaniwang opinyon) ay may mas mataas na tendensiyang kumbinsihin ang iba na sumang-ayon sa kanila at mas mababa ang tendensiyang baguhin ang kanilang sariling opinyon. Sa ganitong paraan, hindi nagiging epektibo ang pagsubok na paliitin ang agwat ng mga opinyon. Sa kabuuan, ang pagkukumpara ng mga miyembro sa isa’t isa, dulot ng pressure na manalo o hindi makapinsala sa grupo, ay maaaring magdulot ng malaking disparity o agwat sa kakayahan at saloobin ng mga miyembro sa kaso ng malaking pagkakaiba sa kaalaman. Samantalang kung halos pantay-pantay ang kakayahan ng mga miyembro, mas nagkakaisa ang grupo.
+
+
+
+
+
+It's possible that members will compare their individual ability to contribute to the Quizbowl which may affect their self-esteem, mood, and self-concept and induce feelings of inferiority or dominance in the case which affects their performance and participation. Specifically, upward comparisons to highly capable peers could motivate improvement or induce complacency. A participant who feels inferior might defer to perceived stronger peers, potentially reducing engagement. Members who do more upward comparisons will feel as though their team members could already handle the tasks required by the Quizbowl and will "free ride" on them to avoid ruining the group's status quo and harm the standing of the group. Conversely, downward comparisons, might foster anxiety. Members who do more downward comparisons will experience the pressure of winning the Quizbowl event or providing the most downfall to their group making them much more anxious and want to dominate the discussions of the group. They would feel as though the burden of the entire group is up to them. A specific model of comparison in Social Comparison Theory, proxy model, can be used to describe the way the members might assess their peers in terms of their ability. Knowing the reputation of a fellow student and their previous achievement, one might infer that if they did well in those tasks, they might also do well in this. Going through the specific cases of being in the Quizbowl and its effects on the way it might affect their self-concept. It was hypothesized that the tendency to compare oneself decreases as the difference between their opinions become divergent. However, this difference is narrowed in the case of the Quizbowl environment as the group essentially have one goal in mind- to score as much points as possible. This instance induces the group members tendency to compare themselves from one another. Further, it was hypothesized that any factors that increase the importance of some particular group as a comparison group from some specific opinion or ability will increase the pressure toward uniformity concerning that ability or opinion within that group. In the context of the Quizbowl, there is one factor that really stands above all else that really affects their performance in their standing, and that is their knowledge of the quarter's lessons which also extends to the lessons in the previous years. With this in mind, members might feel inclined to reduce their difference in this one factor by trying to compare where they stand within the group. However, if this difference is too extreme, it might lead to effects stated. Next, it was also hypothesized when the opinions vary across members, those that are closer to the mode (or majority) have a much stronger tendency to convince others to have their opinions and have less tendency to change their own opinions and as such, failing to narrow the difference in opinion. All in all, these effects could comparison among its members all from the pressure of winning or providing less misfortune to the overall group. In effect this would create a wide disparity between the standings on the members in the case of huge differences in ability and a unified group in the case of similar standing.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
