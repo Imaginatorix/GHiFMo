@@ -319,7 +319,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         history.append({
             "population": new_population_smiles,
             "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive],
-            "scores": 
+            "scores": new_population_fitness
         })
         with open(log_path, "w") as f:
             json.dump(history, f)
