@@ -251,6 +251,8 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
             if scores[i][1] == 0:
                 pareto_archive.append(population[i])
 
+        # Look-up table {Mutate: fitness}
+        new_population_fitness_look_up = dict(zip(new_population, new_fitness_scores))
         # Look-up table {Mutate: (rank, cluster)}
         new_population_look_up = dict(zip(new_population, new_scores))
         # Create a dictionary {cluster: [Mutate]}
@@ -282,6 +284,8 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
 
         # Population picking until POPULATION_SIZE
         new_population_ = []
+        new_population_smiles = []
+        new_population_fitness = []
         loops = 0
         while len(new_population_) < POPULATION_SIZE:
             error = 0
@@ -291,7 +295,12 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
                     continue
 
                 individual = new_population_clusters[cluster][loops]
-                new_population_.append(individual)
+
+                canon_identity = atom_to_smiles(individual.head_atom)
+                if not canon_identity in new_population_smiles:
+                    new_population_.append(individual)
+                    new_population_smiles.append(canon_identity)
+                    new_population_fitness.append(new_population_fitness_look_up[individual])
 
                 if len(new_population_) >= POPULATION_SIZE:
                     break
@@ -304,12 +313,13 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         population = new_population_.copy()
 
         # Print best binding affinity
-        print(f"Generation {generation}: {[atom_to_smiles(individual.head_atom) for individual in population]}")
+        print(f"Generation {generation}: {new_population_smiles}")
 
         # Save history to log.json
         history.append({
-            "population": [atom_to_smiles(individual.head_atom) for individual in population],
-            "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive]
+            "population": new_population_smiles,
+            "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive],
+            "scores": 
         })
         with open(log_path, "w") as f:
             json.dump(history, f)
