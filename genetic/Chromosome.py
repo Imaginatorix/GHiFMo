@@ -1,4 +1,4 @@
-from mendeleev.fetch import element
+from mendeleev import element
 from rdkit import Chem
 
 class Attachment_Point():
