@@ -2,6 +2,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process.kernels import Kernel
+from Chromosome import *
 import joblib
 
 class TanimotoKernel(Kernel):
@@ -69,3 +70,10 @@ def get_binding_affinities(smiles_list, model_filepath):
 
     predicted_affinities = gp.predict(X_novel)
     return predicted_affinities
+
+def get_binding_affinity(molecules):
+    smiles = [atom_to_smiles(molecule.head_atom) for molecule in molecules]
+    model_filepath = "./genetic/trainer.pkl"
+    predicted_affinity = get_binding_affinities(smiles, model_filepath)
+
+    return predicted_affinity

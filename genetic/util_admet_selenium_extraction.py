@@ -13,7 +13,7 @@ def automated_admet(
     smiles_list,
     chromedriver_path=r".\chromedriver-win64\chromedriver.exe",
     download_folder=r".\downloads",
-    batch_size=1000):
+    batch_size=250):
 
     # Ensure download folder exists
     if not os.path.exists(download_folder):
@@ -59,13 +59,13 @@ def automated_admet(
 
             # Wait for the file to be downloaded
             downloaded_files = glob.glob(os.path.join(download_folder, '*.csv'))
-            WebDriverWait(driver, 60).until(
+            WebDriverWait(driver, 90).until(
                 lambda _: len(glob.glob(os.path.join(download_folder, '*.csv'))) > len(downloaded_files)
             )
 
             # Navigate back for the next batch
             driver.get("https://admetlab3.scbdd.com/server/screening")
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "profile-tab"))).click()
 
     finally:
         # Ensure the WebDriver is closed
