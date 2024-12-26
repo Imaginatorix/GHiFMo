@@ -4,7 +4,7 @@ from GeneticMutation import *
 from util_binding_affinity_predictor import TanimotoKernel, smiles_to_fingerprint
 from util_mutation import select_parents, mutation, crossover
 from util_objective import get_fitness, get_scores
-import json
+import pickle
 
 POPULATION_SIZE = 1000
 NUM_PARENTS = POPULATION_SIZE
@@ -30,22 +30,24 @@ def population_from_smiles(smiles):
 
 # Genetic Algorithm for molecular structures
 def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
-    # Create log.json if it doesn't exist
-    log_path = "./history/log.json"
+    # Create log.pkl if it doesn't exist
+    log_path = "./history/log.pkl"
     if not os.path.exists(log_path):
-        with open(log_path, "w") as f:
-            json.dump([], f)
+        with open(log_path, "wb") as f:
+            p = pickle.Pickler(f)
+            p.dump([])
     
-    # Read log.json
-    with open(log_path, "r") as f:
-        history = json.load(f)
+    # Read log.pkl
+    with open(log_path, "rb") as f:
+        up = pickle.Unpickler(f)
+        history = up.load()
 
     if len(history) == 0:
         # Initialize population and archive
         population = init_population()
         pareto_archive = []
     else:
-        population = population_from_smiles(history[-1]["population"])
+        population = history[-1]["population_molecules"]
         pareto_archive = history[-1]["pareto_archive"]
 
     for generation in range(len(history), generations):
@@ -69,6 +71,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         offsprings_crossover = crossover(parents, cross_rate)
 
         # New population
+        print(f"Distribution {len(population)=} {len(offsprings_mutate)=} {len(offsprings_crossover)=} {len(pareto_archive)=}")
         new_population_unfiltered = list(set(population + offsprings_mutate + offsprings_crossover + pareto_archive))
 
         # Filter all invalid through rdkit
@@ -173,15 +176,17 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Print best binding affinity
         print(f"Generation {generation}: {new_population_smiles}")
 
-        # Save history to log.json
+        # Save history to log.pkl
         print("Logging to history...")
         history.append({
-            "population": new_population_smiles,
+            "population_molecules": population,
+            "population_smiles": new_population_smiles,
             "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive],
             "scores": new_population_fitness
         })
-        with open(log_path, "w") as f:
-            json.dump(history, f)
+        with open(log_path, "wb") as f:
+            p = pickle.Pickler(f)
+            p.dump(history)
 
     print(population)
 

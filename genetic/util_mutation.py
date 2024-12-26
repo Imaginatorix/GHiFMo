@@ -10,7 +10,7 @@ def select_parents(population, scores, num_parents):
         clustered[scores[i]].append((population[i], scores[i]))
 
     parents = []
-    while len(parents) != num_parents:
+    while len(parents) < min(len(population), num_parents):
         for cluster, individual_scores in clustered.items():
             parent1, rank1 = random.choice(individual_scores)
             parent2, rank2 = random.choice(individual_scores)
