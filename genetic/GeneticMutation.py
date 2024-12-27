@@ -43,7 +43,6 @@ class Mutate():
         while i < tries:
             try:
                 if mutation_type == "scaffold":
-                    break # NOTE
                     self.head_atom, self.ring_manager = self.ScaffoldHop()
                     modified = True
                     break
@@ -180,7 +179,7 @@ class Mutate():
         # Create the new molecule
         final = editable_final.GetMol()
 
-        return atom_from_smiles(Chem.MolFromSmiles(final))[0]
+        return atom_from_smiles(Chem.MolToSmiles(final))
 
 
     def OpenRing(self):

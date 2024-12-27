@@ -110,7 +110,10 @@ import copy
 
 # a.randomMutate()
 
-atom_from_smiles("S=c1nc[nH]c2nc[nH]c12")[0].show()
-atom_from_smiles("Nc2nc(=S)c1[nH]cnc1[nH]2")[0].show()
+a = atom_from_smiles("S=c1nc[nH]c2nc[nH]c12")
+b = atom_from_smiles("Nc2nc(=S)c1[nH]cnc1[nH]2")[0]
 
+a_mutate = Mutate(a[0], a[1])
+a_mutate.head_atom.show()
+a_mutate.ScaffoldHop()[0].show()
 

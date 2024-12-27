@@ -6,7 +6,7 @@ from util_mutation import select_parents, mutation, crossover
 from util_objective import get_fitness, get_scores
 import pickle
 
-POPULATION_SIZE = 1000
+POPULATION_SIZE = 150
 NUM_PARENTS = POPULATION_SIZE
 MUT_RATE = 1
 CROSS_RATE = 1
@@ -51,10 +51,17 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         pareto_archive = history[-1]["pareto_archive"]
 
     for generation in range(len(history), generations):
+        print("History")
+        print(history)
+        
         print("Running generation", generation)
         # Get scores
         print("Getting fitness scores...")
-        fitness_scores = get_fitness(population)
+        if len(history) >= 1:
+            fitness_scores = history[-1]["scores"]
+        else:
+            fitness_scores = get_fitness(population)
+
         print("Ranking molecules:")
         scores = get_scores(population, fitness_scores)
         print(scores)
@@ -71,7 +78,6 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         offsprings_crossover = crossover(parents, cross_rate)
 
         # New population
-        print(f"Distribution {len(population)=} {len(offsprings_mutate)=} {len(offsprings_crossover)=} {len(pareto_archive)=}")
         new_population_unfiltered = list(set(population + offsprings_mutate + offsprings_crossover + pareto_archive))
 
         # Filter all invalid through rdkit
@@ -85,7 +91,10 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
                     continue
                 unique_smiles.append(smiles_string)
 
-                Chem.MolFromSmiles(smiles_string)
+                mol = Chem.MolFromSmiles(smiles_string)
+                mol = Chem.AddHs(mol)  # Add hydrogens
+                AllChem.EmbedMolecule(mol)  # Generate initial 3D coordinates
+                AllChem.UFFOptimizeMolecule(mol)  # Optimize geometry with UFF force field
                 fp = smiles_to_fingerprint(smiles_string)
                 if fp is None:
                     continue

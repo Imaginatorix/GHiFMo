@@ -43,23 +43,26 @@ def calculate_homo_lumo(geometry):
     psi4.set_options({
         "basis": "sto-3g",  # Basis set
         "scf_type": "df",  # Density fitting for speed
-        "reference": "rhf",  # Restricted HF for closed-shell systems
+        "reference": "rhf"  # Restricted HF for closed-shell systems,
     })
-
+    psi4.set_memory(5e8)
+    psi4.set_num_threads(4)
+    
     # Perform DFT calculation with B3LYP
     energy, wavefunction = psi4.energy("b3lyp", return_wfn=True)
 
     # Extract orbital energies
-    orbital_energies = wavefunction.epsilon_a().to_array()
-    num_electrons = wavefunction.nalpha() + wavefunction.nbeta()
-    homo_index = num_electrons // 2 - 1  # Index of HOMO
-    lumo_index = homo_index + 1  # Index of LUMO
+    eps = wavefunction.epsilon_a_subset("AO", "ALL").np
 
-    homo_energy = orbital_energies[homo_index] * 27.2114  # Convert Hartree to eV
-    lumo_energy = orbital_energies[lumo_index] * 27.2114  # Convert Hartree to eV
-    homo_lumo_gap = lumo_energy - homo_energy
+    nocc = wavefunction.nalpha()  # Number of alpha electrons (occupied orbitals)
+    if nocc == len(eps):
+        return 0
 
-    return homo_lumo_gap
+    # HOMO is the last occupied orbital, and LUMO is the first unoccupied orbital
+    homo = eps[nocc - 1]
+    lumo = eps[nocc]
+    
+    return lumo-homo
 
 def smiles_to_geometry(smiles):
     mol = Chem.MolFromSmiles(smiles)
