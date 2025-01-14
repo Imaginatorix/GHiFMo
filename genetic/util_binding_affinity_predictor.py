@@ -2,8 +2,8 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process.kernels import Kernel
-from Chromosome import *
 import joblib
+from sklearn.preprocessing import StandardScaler
 
 class TanimotoKernel(Kernel):
     def __init__(self):
@@ -29,20 +29,23 @@ class TanimotoKernel(Kernel):
     def is_stationary(self):
         return False
 
+
+
 morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
 
 def smiles_to_fingerprint(smiles):
+   
     try:
         mol = Chem.MolFromSmiles(smiles)
+        if mol is not None:
+            fp = morgan_gen.GetFingerprint(mol)
+            return np.array(fp)
     except Exception:
-        mol = None
-
-    if mol is not None:
-        fp = morgan_gen.GetFingerprint(mol)
-        return np.array(fp)
+        return None
     return None
 
 def process_smiles(smiles_list):
+    """Process a list of SMILES into valid fingerprints."""
     fingerprints = []
     valid_smiles = []
     invalid_smiles = []
@@ -53,27 +56,41 @@ def process_smiles(smiles_list):
             valid_smiles.append(smiles)
             fingerprints.append(fp)
         else:
-            invalid_smiles.append(smiles) 
+            invalid_smiles.append(smiles)
 
     if invalid_smiles:
-        print(f"Ignored invalid smiles: {invalid_smiles}")
+        print(f"Ignored invalid SMILES: {invalid_smiles}")
 
     fingerprints = np.array(fingerprints)
     return valid_smiles, fingerprints
 
-def get_binding_affinities(smiles_list, model_filepath):
+def get_binding_affinities(smiles_list, model_filepath, scaler_filepath):
+    """Predict binding affinities using a Gaussian Process model."""
+    
     gp = joblib.load(model_filepath)
+    scaler = joblib.load(scaler_filepath)
+
+    
     valid_smiles, X_novel = process_smiles(smiles_list)
 
     if len(X_novel) == 0:
         raise ValueError("No valid fingerprints found.")
 
-    predicted_affinities = gp.predict(X_novel)
-    return predicted_affinities
+    X_novel_scaled = scaler.transform(X_novel)
+
+  
+    predicted_affinities = gp.predict(X_novel_scaled)
+
+
+    predicted_affinities = scaler.inverse_transform(predicted_affinities.reshape(-1, 1)).flatten()
+
+    return valid_smiles, predicted_affinities
 
 def get_binding_affinity(molecules):
+   
     smiles = [atom_to_smiles(molecule.head_atom) for molecule in molecules]
     model_filepath = "./genetic/trainer.pkl"
-    predicted_affinity = get_binding_affinities(smiles, model_filepath)
+    scaler_filepath = "./genetic/scaler.pkl"
 
-    return predicted_affinity
+    valid_smiles, predicted_affinity = get_binding_affinities(smiles, model_filepath, scaler_filepath)
+    return valid_smiles, predicted_affinity
