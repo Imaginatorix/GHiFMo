@@ -46,7 +46,7 @@ def smiles_to_fingerprint(smiles):
     return None
 
 def process_smiles(smiles_list):
-    """Process a list of SMILES into valid fingerprints."""
+   
     fingerprints = []
     valid_smiles = []
     invalid_smiles = []
@@ -66,7 +66,7 @@ def process_smiles(smiles_list):
     return valid_smiles, fingerprints
 
 def get_binding_affinities(smiles_list, model_filepath, scaler_filepath):
-    """Predict binding affinities using a Gaussian Process model."""
+ 
     
     gp = joblib.load(model_filepath)
     scaler = joblib.load(scaler_filepath)
