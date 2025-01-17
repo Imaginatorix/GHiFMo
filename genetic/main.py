@@ -5,6 +5,7 @@ from util_binding_affinity_predictor import TanimotoKernel, smiles_to_fingerprin
 from util_mutation import select_parents, mutation, crossover
 from util_objective import get_fitness, get_scores
 import pickle
+print("IMPORTS COMPLETE")
 
 POPULATION_SIZE = 150
 NUM_PARENTS = POPULATION_SIZE
@@ -17,8 +18,8 @@ def init_population():
     # population_chromosomes = [atom_from_smiles("Nc1nc(-c2cccs2)c(NC(=O)c2ccccc2)s1"), atom_from_smiles("CC(C)OC(=O)CC(=O)CSc1nc2c(cc1C#N)CCC2"),
     #         atom_from_smiles("N#CC(C#N)=c1ccc2c(c1)NC1(CCCCC1)N=2"), atom_from_smiles("CCc1n[nH]c2c1/C(=N\O)CC(c1ccccc1)C2")]
 
-    # molecules = [mercaptopurine, tioguanine, methotrexate, cytarabine]
-    molecules = ["S=c1nc[nH]c2nc[nH]c12", "Nc2nc(=S)c1[nH]cnc1[nH]2", "O=C([C@H](CCC(O)=O)NC(C1=CC=C(N(CC2=CN=C(N=C(N)N=C3N)C3=N2)C)C=C1)=O)O", "O=C1/N=C(/N)\C=C/N1[C@@H]2O[C@@H]([C@@H](O)[C@@H]2O)CO"]
+    # molecules = [Nevirapine, Efavirenz]
+    molecules = ["O=C2Nc1c(ccnc1N(c3ncccc23)C4CC4)C", "O=C1Nc2ccc(Cl)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1"]
     population_chromosomes = [atom_from_smiles(smiles_string) for smiles_string in molecules]
     return [Mutate(head_atom, ring_manager) for head_atom, ring_manager in population_chromosomes]
 
@@ -58,9 +59,10 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Get scores
         print("Getting fitness scores...")
         if len(history) >= 1:
-            fitness_scores = history[-1]["scores"]
+            fitness = history[-1]["fitness"]
+            fitness_scores = history[-1]["distance"]
         else:
-            fitness_scores = get_fitness(population)
+            fitness, fitness_scores = get_fitness(population)
 
         print("Ranking molecules:")
         scores = get_scores(population, fitness_scores)
@@ -109,7 +111,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Get scores
         print("Filtering new population...")
         print("> Getting fitness scores...")
-        new_fitness_scores = get_fitness(new_population)
+        new_fitness, new_fitness_scores = get_fitness(new_population)
         print("> Ranking molecules:")
         new_scores = get_scores(new_population, new_fitness_scores)
 
@@ -119,7 +121,9 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
                 pareto_archive.append(population[i])
 
         # Look-up table {Mutate: fitness}
-        new_population_fitness_look_up = dict(zip(new_population, new_fitness_scores))
+        new_population_fitness_look_up = dict(zip(new_population, new_fitness))
+        # Look-up table {Mutate: fitness_scores}
+        new_population_fitness_scores_look_up = dict(zip(new_population, new_fitness_scores))
         # Look-up table {Mutate: (rank, cluster)}
         new_population_look_up = dict(zip(new_population, new_scores))
         # Create a dictionary {cluster: [Mutate]}
@@ -154,6 +158,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         new_population_ = []
         new_population_smiles = []
         new_population_fitness = []
+        new_population_fitness_scores = []
         loops = 0
         while len(new_population_) < POPULATION_SIZE:
             error = 0
@@ -169,6 +174,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
                     new_population_.append(individual)
                     new_population_smiles.append(canon_identity)
                     new_population_fitness.append(new_population_fitness_look_up[individual])
+                    new_population_fitness_scores.append(new_population_fitness_scores_look_up[individual])
 
                 if len(new_population_) >= POPULATION_SIZE:
                     break
@@ -191,7 +197,8 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
             "population_molecules": population,
             "population_smiles": new_population_smiles,
             "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive],
-            "scores": new_population_fitness
+            "fitness": new_population_fitness,
+            "fitness_scores": new_population_fitness_scores
         })
         with open(log_path, "wb") as f:
             p = pickle.Pickler(f)

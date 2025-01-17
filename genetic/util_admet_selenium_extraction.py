@@ -92,8 +92,15 @@ def automated_admet(
     merged_df = pd.read_csv(merged_output_path)
 
     # Define columns to extract
-    columns_to_extract = ['Lipinski', 'PPB', 'logVDss', 'CYP3A4-inh', 'CYP3A4-sub', 
-                          'CYP2D6-inh', 'CYP2D6-sub', 'cl-plasma', 't0.5', 'DILI', 'hERG', 'Synth']
+    columns_to_extract = [
+                          "Lipinski", "MW",               # Physiological
+                          "pgp_inh", "pgp_sub",           # A
+                          "logVDss",                      # D
+                          "CYP2D6-inh", "CYP2D6-sub",     # M
+                          "cl-plasma",                    # E
+                          "hERG",                         # T
+                          "Synth" # + Binding Affinity, Homo-Lumo Gap
+                         ]
     
     # Check if all columns exist in the merged dataset
     missing_columns = [col for col in columns_to_extract if not col in merged_df.columns]

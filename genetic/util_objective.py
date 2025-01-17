@@ -6,6 +6,7 @@ from Chromosome import *
 from util_clusters import get_cluster
 from util_binding_affinity_predictor import *
 from util_admet_selenium_extraction import automated_admet
+import copy
 
 def get_pareto_ranking(fitness_scores):
     def dominates(sol1, sol2):
@@ -62,7 +63,7 @@ def calculate_homo_lumo(geometry):
     homo = eps[nocc - 1]
     lumo = eps[nocc]
     
-    return lumo-homo
+    return (lumo-homo)*27.2114
 
 def smiles_to_geometry(smiles):
     mol = Chem.MolFromSmiles(smiles)
@@ -97,10 +98,41 @@ def get_fitness(molecules):
         admet_props[i].append(binding_affinity[i])
         admet_props[i].append(homo_lumo_gap[i])
 
-    for i in range(len(admet_props)):
-        for index in [0, 2, 4, 6, 8, 9, 11, 12, 13]:
-            admet_props[i][index] = -admet_props[i][index]
-    admet_props = [tuple(admet_prop) for admet_prop in admet_props]
+    # columns_to_extract = [
+    #                       "Lipinski", "MW",               # Physiological
+    #                       "pgp_inh", "pgp_sub",           # A
+    #                       "logVDss",                      # D
+    #                       "CYP2D6-inh", "CYP2D6-sub",     # M
+    #                       "cl-plasma",                    # E
+    #                       "hERG",                         # T
+    #                       "Synth" # + Binding Affinity, Homo-Lumo Gap
+    #                      ]
 
-    return admet_props
+    def distance_to_ideal(value, ideal):
+        if ideal == float("+inf"):
+            return value
+        elif ideal == float("-inf"):
+            return -value
+        else:
+            return -abs(value - ideal)
+
+    ideal_values = [
+                    0, 350,                 # Physiological
+                    0, 0,                   # A
+                    10.02,                  # D
+                    0, 0,                   # M
+                    0,                      # E
+                    0,                      # T
+                    0, float("-inf"), 6     # Other
+                ]
+
+    distance = copy.deepcopy(admet_props)
+    for i in range(len(distance)):
+        for index in range(len(distance[i])):
+            # Distance formula
+            distance[i][index] = distance_to_ideal(distance[i][index], ideal_values[index])
+    admet_props = [tuple(admet_prop) for admet_prop in admet_props]
+    distance = [tuple(dist) for dist in distance]
+
+    return admet_props, distance
 

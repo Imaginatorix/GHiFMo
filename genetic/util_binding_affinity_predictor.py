@@ -3,6 +3,7 @@ from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process.kernels import Kernel
 import joblib
+from Chromosome import *
 from sklearn.preprocessing import StandardScaler
 
 class TanimotoKernel(Kernel):
