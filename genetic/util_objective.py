@@ -9,9 +9,12 @@ from util_admet_selenium_extraction import automated_admet
 import copy
 
 def get_pareto_ranking(fitness_scores):
+    if fitness_scores is None:
+        raise ValueError("Fitness scores cannot be None")
+    
     def dominates(sol1, sol2):
         return all(x <= y for x, y in zip(sol1, sol2)) and any(x < y for x, y in zip(sol1, sol2))
-    
+
     num_solutions = len(fitness_scores)
     pareto_levels = np.zeros(num_solutions, dtype=int)  # Initialize ranks
 
@@ -23,12 +26,10 @@ def get_pareto_ranking(fitness_scores):
 
     return pareto_levels
 
-
 def get_scores(population, fitness_scores):
     # (Pareto Ranking, Cluster)
     scores = list(zip(get_pareto_ranking(fitness_scores), get_cluster(population)))
     return scores
-
 
 def get_admet(molecules):
     molecules = [atom_to_smiles(molecule.head_atom) for molecule in molecules]
@@ -86,7 +87,7 @@ def get_hlg(molecules):
     return homo_lumo_gap
 
 def get_fitness(molecules):
-    # Get Admet and Get SA are merged
+    # Get ADMET and Get SA are merged
     admet_props = get_admet(molecules).values.tolist()
 
     # Predicted binding affinity (e.g., lower values are better for binding affinity)
@@ -94,27 +95,26 @@ def get_fitness(molecules):
     # Predicted HOMO-LUMO Gap using Quantum Chemistry
     homo_lumo_gap = get_hlg(molecules)
 
+    # Combine the properties into a fitness score list
+    fitness_scores = []
     for i in range(len(admet_props)):
+        # Append binding affinity and HOMO-LUMO gap to each molecule's ADMET properties
         admet_props[i].append(binding_affinity[i])
         admet_props[i].append(homo_lumo_gap[i])
+        fitness_scores.append(admet_props[i])
 
-    # columns_to_extract = [
-    #                       "Lipinski", "MW",               # Physiological
-    #                       "pgp_inh", "pgp_sub",           # A
-    #                       "logVDss",                      # D
-    #                       "CYP2D6-inh", "CYP2D6-sub",     # M
-    #                       "cl-plasma",                    # E
-    #                       "hERG",                         # T
-    #                       "Synth" # + Binding Affinity, Homo-Lumo Gap
-    #                      ]
+    return fitness_scores  # Return the fitness scores
 
-    def distance_to_ideal(value, ideal):
-        if ideal == float("+inf"):
-            return value
-        elif ideal == float("-inf"):
-            return -value
-        else:
-            return -abs(value - ideal)
+def distance_to_ideal(value, ideal):
+    
+    if isinstance(value, list):
+        return [distance_to_ideal(v, ideal) for v in value]
+    elif ideal == float("+inf"):
+        return value
+    elif ideal == float("-inf"):
+        return -value
+    else:
+        return -abs(value - ideal)
 
     ideal_values = [
                     0, 350,                 # Physiological

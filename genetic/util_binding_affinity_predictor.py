@@ -3,7 +3,6 @@ from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from sklearn.gaussian_process.kernels import Kernel
 import joblib
-from sklearn.preprocessing import MinMaxScaler
 from Chromosome import *  
 
 class TanimotoKernel(Kernel):
@@ -64,31 +63,22 @@ def process_smiles(smiles_list):
     return valid_smiles, fingerprints
 
 
-def get_binding_affinities(smiles_list, model_filepath, scaler_filepath):
+def get_binding_affinities(smiles_list, model_filepath):
     gp = joblib.load(model_filepath)  
-    scaler = joblib.load(scaler_filepath)  
 
-   
     valid_smiles, X_novel = process_smiles(smiles_list)
 
     if len(X_novel) == 0:
         raise ValueError("No valid fingerprints found.")
 
-    X_novel_scaled = scaler.transform(X_novel)
-
-    
-    predicted_affinities_scaled = gp.predict(X_novel_scaled)
-
-    predicted_affinities = scaler.inverse_transform(predicted_affinities_scaled.reshape(-1, 1)).flatten()
+    predicted_affinities = gp.predict(X_novel)
 
     return valid_smiles, predicted_affinities
 
 
 def get_binding_affinity(molecules):
     smiles = [atom_to_smiles(molecule.head_atom) for molecule in molecules]
-    model_filepath = "../genetic/trainer.pkl"  
-    scaler_filepath = "../genetic/scaler.pkl"  
+    model_filepath = r"../genetic/trained_model.pkl"  
 
-    valid_smiles, predicted_affinity = get_binding_affinities(smiles, model_filepath, scaler_filepath)
+    valid_smiles, predicted_affinity = get_binding_affinities(smiles, model_filepath)
     return valid_smiles, predicted_affinity
-
