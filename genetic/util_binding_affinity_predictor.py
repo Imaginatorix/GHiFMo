@@ -78,7 +78,7 @@ def get_binding_affinities(smiles_list, model_filepath):
 
 def get_binding_affinity(molecules):
     smiles = [atom_to_smiles(molecule.head_atom) for molecule in molecules]
-    model_filepath = r"../genetic/trained_model.pkl"  
+    model_filepath = r"./genetic/trained_model.pkl"  
 
     valid_smiles, predicted_affinity = get_binding_affinities(smiles, model_filepath)
-    return valid_smiles, predicted_affinity
+    return predicted_affinity

@@ -103,18 +103,13 @@ def get_fitness(molecules):
         admet_props[i].append(homo_lumo_gap[i])
         fitness_scores.append(admet_props[i])
 
-    return fitness_scores  # Return the fitness scores
-
-def distance_to_ideal(value, ideal):
-    
-    if isinstance(value, list):
-        return [distance_to_ideal(v, ideal) for v in value]
-    elif ideal == float("+inf"):
-        return value
-    elif ideal == float("-inf"):
-        return -value
-    else:
-        return -abs(value - ideal)
+    def distance_to_ideal(value, ideal):    
+        if ideal == float("+inf"):
+            return value
+        elif ideal == float("-inf"):
+            return -1 * value
+        else:
+            return -1 * abs(value - ideal)
 
     ideal_values = [
                     0, 350,                 # Physiological
