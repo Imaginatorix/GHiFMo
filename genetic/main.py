@@ -15,8 +15,8 @@ GENERATIONS = 1000
 
 def init_population():
     # Initialize a population of random molecular structures
-    # molecules = [Tamoxifen, Fulvestrant]
-    molecules = ["CN(C)CCOc1ccc(cc1)/C(c2ccccc2)=C(/CC)c3ccccc3", "C[C@]12CC[C@@H]3c4ccc(O)cc4CC(CCCCCCCCCS(=O)CCCC(F)(F)C(F)(F)F)[C@H]3[C@@H]1CC[C@@H]2O"]
+    # molecules = [Propanolol, Pindolol]
+    molecules = ["CC(C)NCC(COC1=CC=CC2=CC=CC=C21)O", "CC(C)NCC(COC1=CC=CC2=C1C=CN2)O"]
     population_chromosomes = [atom_from_smiles(smiles_string) for smiles_string in molecules]
     return [Mutate(head_atom, ring_manager) for head_atom, ring_manager in population_chromosomes]
 
