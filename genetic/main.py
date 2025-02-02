@@ -201,7 +201,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
             "fitness_scores": new_fitness_scores
         }
 
-        history.append(log_dir)
+        history.append(log_data)
 
         with open(os.path.join(log_dir, f"log_{generation}.pkl"), "wb") as f:
             pickle.dump([log_data], f)
