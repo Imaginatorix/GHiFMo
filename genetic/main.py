@@ -7,7 +7,7 @@ from util_objective import get_fitness, get_scores
 import pickle
 print("IMPORTS COMPLETE")
 
-POPULATION_SIZE = 50
+POPULATION_SIZE = 100
 NUM_PARENTS = POPULATION_SIZE
 MUT_RATE = 1
 CROSS_RATE = 1
@@ -15,8 +15,8 @@ GENERATIONS = 1000
 
 def init_population():
     # Initialize a population of random molecular structures
-    # molecules = [Propanolol, Pindolol, Atenolol, Timolol]
-    molecules = ["CC(C)NCC(COC1=CC=CC2=CC=CC=C21)O", "CC(C)NCC(COC1=CC=CC2=C1C=CN2)O","CC(C)NCC(COC1=CC=C(C=C1)CC(=O)N)O","CC(C)(C)NC[C@@H](COC1=NSN=C1N2CCOCC2)O"]
+    # molecules = [Propanolol, Pindolol]
+    molecules = ["CC(C)NCC(COC1=CC=CC2=CC=CC=C21)O", "CC(C)NCC(COC1=CC=CC2=C1C=CN2)O", "CC(C)NCC(COC1=CC=C(C=C1)CC(=O)N)O", "CC(C)(C)NC[C@@H](COC1=NSN=C1N2CCOCC2)O"]
     population_chromosomes = [atom_from_smiles(smiles_string) for smiles_string in molecules]
     return [Mutate(head_atom, ring_manager) for head_atom, ring_manager in population_chromosomes]
 
@@ -28,30 +28,31 @@ def population_from_smiles(smiles):
 
 # Genetic Algorithm for molecular structures
 def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
-    # Create log.pkl if it doesn't exist
-    log_path = "./history/log.pkl"
-    if not os.path.exists(log_path):
-        with open(log_path, "wb") as f:
-            p = pickle.Pickler(f)
-            p.dump([]) 
+    # Create log directory if it doesn't exist
+    log_dir = r"../history"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
-    # Read log.pkl
-    with open(log_path, "rb") as f:
-        up = pickle.Unpickler(f)
-        history = up.load()
-
-    if len(history) == 0:
-        # Initialize population and archive
+    # Initialize population and archive if first run
+    if not os.listdir(log_dir):
         population = init_population()
         pareto_archive = []
+        history = []
     else:
+        # Load the last generation log
+        latest_log = sorted(os.listdir(log_dir), key=lambda x: int(x.split('_')[1].split('.')[0]))[-1]
+        with open(os.path.join(log_dir, latest_log), "rb") as f:
+            up = pickle.Unpickler(f)
+            history = up.load()
+
         population = history[-1]["population_molecules"]
         pareto_archive = history[-1]["pareto_archive"]
 
     for generation in range(len(history), generations):
         print("History")
         print(history)
-        
+
+
         print("Running generation", generation)
         # Get scores
         print("Getting fitness scores...")
@@ -61,7 +62,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         else:
             fitness, fitness_scores = get_fitness(population)
 
-        print("Ranking molecules:")
+        print("Ranking molecules...")
         scores = get_scores(population, fitness_scores)
         print(scores)
 
@@ -72,6 +73,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Mutate
         print("Mutating...")
         offsprings_mutate = mutation(population, mut_rate)
+
         # Crossover
         print("Breeding...")
         offsprings_crossover = crossover(parents, cross_rate)
@@ -79,7 +81,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # New population
         new_population_unfiltered = list(set(population + offsprings_mutate + offsprings_crossover + pareto_archive))
 
-        # Filter all invalid through rdkit
+        # Filter all invalid molecules through rdkit
         print("New population :OO")
         new_population = []
         unique_smiles = []
@@ -91,9 +93,9 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
                 unique_smiles.append(smiles_string)
 
                 mol = Chem.MolFromSmiles(smiles_string)
-                mol = Chem.AddHs(mol)  # Add hydrogens
-                AllChem.EmbedMolecule(mol)  # Generate initial 3D coordinates
-                AllChem.UFFOptimizeMolecule(mol)  # Optimize geometry with UFF force field
+                mol = Chem.AddHs(mol)
+                AllChem.EmbedMolecule(mol)
+                AllChem.UFFOptimizeMolecule(mol)
                 fp = smiles_to_fingerprint(smiles_string)
                 if fp is None:
                     continue
@@ -105,6 +107,7 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
 
         print(len(new_population))
 
+        
         # Get scores
         print("Filtering new population...")
         print("> Getting fitness scores...")
@@ -188,24 +191,26 @@ def genetic_algorithm(generations, mut_rate, cross_rate, num_parents):
         # Print best binding affinity
         print(f"Generation {generation}: {new_population_smiles}")
 
-        # Save history to log.pkl
-        print("Logging to history...")
-        history.append({
+        # Log data for this generation
+        print("Saving log for generation", generation)
+        log_data = {
             "population_molecules": population,
             "population_smiles": new_population_smiles,
-            "pareto_archive": [atom_to_smiles(individual.head_atom) for individual in pareto_archive],
-            "fitness": new_population_fitness,
-            "fitness_scores": new_population_fitness_scores
-        })
-        with open(log_path, "wb") as f:
-            p = pickle.Pickler(f)
-            p.dump(history)
+            "pareto_archive": [atom_to_smiles(ind.head_atom) for ind in pareto_archive],
+            "fitness": new_fitness,
+            "fitness_scores": new_fitness_scores
+        }
+
+        history.append(log_dir)
+
+        with open(os.path.join(log_dir, f"log_{generation}.pkl"), "wb") as f:
+            pickle.dump([log_data], f)
 
     print(population)
 
-
 if __name__ == "__main__":
     genetic_algorithm(GENERATIONS, MUT_RATE, CROSS_RATE, NUM_PARENTS)
+
 
 
 
